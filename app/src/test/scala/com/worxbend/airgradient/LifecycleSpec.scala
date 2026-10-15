@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import scala.concurrent.duration.DurationInt
 
 final class LifecycleSpec extends AnyFunSuite:
-  test("saving a new device restores its history and rejects late results from the retired device"):
+  test("device changes restore read-only history and reject late results from the retired device"):
     val directory = Files.createTempDirectory("ag-session")
     val file      = directory.resolve("config.json")
     Files.writeString(file, """{"server_url":"old.invalid","refresh_interval_secs":3600,"other":{"keep":true}}""")
@@ -30,7 +30,7 @@ final class LifecycleSpec extends AnyFunSuite:
           Right(Snapshot(Map(Metric.Co2 -> 9999), false))
         else Right(Demo.snapshot(0))
       override def close(): Unit = blocked.countDown()
-    val app     = Dashboard(store.load().toOption.get, store, records, client)
+    val app     = Dashboard(store.load().toOption.get, store, HistoryStore.readOnly(records), client)
     val backend = HeadlessBackend(Size(120, 30))
     Pilot.using(backend)(app.runWith(backend)) { pilot =>
       pilot.waitUntil("initial frame")(pilot.screenText.contains("780 ppm"))
@@ -48,6 +48,8 @@ final class LifecycleSpec extends AnyFunSuite:
       pilot.waitUntil("retired request completed")(finished.get())
       pilot.waitForIdle()
       assert(!app.history.peek.exists(_.snapshot.value(Metric.Co2).contains(9999)))
+      assert(records.load("http://new.invalid/").toOption.get.map(_.atMillis) == Vector(1000))
+      assert(records.load("http://old.invalid/").toOption.get.isEmpty)
       assert(ujson.read(Files.readString(file))("other")("keep").bool)
     }
 

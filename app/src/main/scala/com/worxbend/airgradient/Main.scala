@@ -81,7 +81,10 @@ object Main:
               else
                 val client: SensorClient = if options.demo then DemoClient() else DeviceClient()
                 val diskHistory          = FileHistory(options.history)
-                val historyStore = if options.demo || !options.recordHistory then HistoryStore.Disabled else diskHistory
+                val historyStore         =
+                  if options.demo then HistoryStore.Disabled
+                  else if !options.recordHistory then HistoryStore.readOnly(diskHistory)
+                  else diskHistory
                 if options.once then
                   try
                     client.fetch(address.toOption.get) match

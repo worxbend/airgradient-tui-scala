@@ -90,6 +90,10 @@ trait HistoryStore:
   def append(sample: Sample): Either[String, Unit]
 
 object HistoryStore:
+  def readOnly(store: HistoryStore): HistoryStore = new HistoryStore:
+    def load(source: String): Either[String, Vector[Sample]] = store.load(source)
+    def append(sample: Sample): Either[String, Unit]         = { val _ = sample; Right(()) }
+
   val Disabled: HistoryStore = new HistoryStore:
     def load(source: String): Either[String, Vector[Sample]] = { val _ = source; Right(Vector.empty) }
     def append(sample: Sample): Either[String, Unit]         = { val _ = sample; Right(()) }
