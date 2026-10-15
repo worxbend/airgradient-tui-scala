@@ -143,11 +143,13 @@ python3 scripts/check-snapshots.py
 python3 scripts/package.py
 java --enable-native-access=ALL-UNNAMED -jar dist/airgradient-tui.jar --demo
 python3 scripts/smoke-pty.py --jar dist/airgradient-tui.jar
+python3 scripts/smoke-http.py --jar dist/airgradient-tui.jar
 
 # Native executable on the current platform
 python3 scripts/package.py --native
 ./dist/airgradient-tui --demo
 python3 scripts/smoke-pty.py --binary dist/airgradient-tui
+python3 scripts/smoke-http.py --binary dist/airgradient-tui
 ```
 
 CI runs the test suite and packaged JAR on JDK 25 and 26, checks published dependency
