@@ -113,7 +113,7 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 
 </details>
 
-## ⌨️ Make yourself at home
+## ⌨ Make yourself at home
 
 | Key | Action |
 | --- | --- |
@@ -199,7 +199,7 @@ The application demonstrates Glyphora signals, owned async task scopes, lifecycl
 responsive layouts, themed metric cards, gauges, sparklines, charts, inputs, buttons,
 keyboard bindings, notifications, and headless Pilot tests.
 
-## 🛠️ Build & contribute
+## 🛠 Build & contribute
 
 Bug reports, fixes, and ideas are welcome. [Open an issue](https://github.com/worxbend/airgradient-tui-scala/issues)
 with your platform, Java version, steps to reproduce, and a sanitized example when useful.
