@@ -1,0 +1,11 @@
+{
+  "rco2": 0,
+  "pm02": null,
+  "pm01": "not-a-number",
+  "pm10": "NaN",
+  "pm003Count": -1,
+  "atmp": {},
+  "rhum": [],
+  "tvocIndex": null,
+  "noxIndex": "Infinity"
+}

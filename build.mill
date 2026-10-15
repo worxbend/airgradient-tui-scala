@@ -1,0 +1,31 @@
+package build
+
+import mill.*
+import mill.javalib.{DepSyntax, TestModule}
+import mill.scalalib.SbtModule
+import mill.scalalib.scalafmt.ScalafmtModule
+import mill.scalalib.NativeImageModule
+
+object app extends SbtModule with ScalafmtModule {
+  def scalaVersion = "3.9.0"
+  def scalacOptions = Seq("-deprecation", "-feature", "-unchecked", "-Wunused:all", "-Werror", "-release:25")
+  def repositories = Seq("https://repo.maven.apache.org/maven2")
+  def mvnDeps = Seq(mvn"com.worxbend::tui-dsl:0.18.3", mvn"com.lihaoyi::ujson:4.4.3")
+  def mainClass = Some("com.worxbend.airgradient.Main")
+
+  object test extends SbtTests with TestModule.ScalaTest with ScalafmtModule {
+    def mvnDeps = Seq(mvn"com.worxbend::tui-test:0.18.3", mvn"org.scalatest::scalatest:3.2.20")
+    def forkArgs = Seq("--add-modules=jdk.httpserver")
+    def testForkGrouping = discoveredTestClasses().map(Seq(_))
+  }
+}
+
+// Keep the native compiler pin separate so the JVM matrix really tests JDK 25 and 26.
+object native extends SbtModule with NativeImageModule {
+  def scalaVersion = app.scalaVersion()
+  def repositories = app.repositories()
+  def moduleDeps = Seq(app)
+  def mainClass = app.mainClass()
+  def jvmVersion = "graalvm-community:25.0.2"
+  def nativeImageOptions = Seq("--no-fallback", "--enable-native-access=ALL-UNNAMED")
+}

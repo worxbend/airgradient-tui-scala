@@ -1,0 +1,13 @@
+{
+  "rco2": 612,
+  "pm02": 7.4,
+  "pm01": 4.2,
+  "pm10": 11.8,
+  "pm003Count": 1234,
+  "atmp": 21.8,
+  "atmpCompensated": 22.6,
+  "rhum": 46.9,
+  "rhumCompensated": 48.1,
+  "tvocIndex": 83,
+  "noxIndex": 2
+}

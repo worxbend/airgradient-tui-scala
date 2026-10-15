@@ -1,0 +1,17 @@
+{
+  "rco2": 610,
+  "pm02": 8.2,
+  "atmpCompensated": 22.4,
+  "rhumCompensated": 47.5,
+  "device": {
+    "serial": "airgradient-test-fixture",
+    "measurements": {
+      "co2": 1999,
+      "pm2_5": 35.4,
+      "temperatureCompensated": 30.5,
+      "humidityCompensated": 77.7,
+      "tvoc": 301,
+      "nox": 45
+    }
+  }
+}

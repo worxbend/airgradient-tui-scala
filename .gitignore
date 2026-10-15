@@ -1,0 +1,9 @@
+out/
+.bsp/
+.idea/
+.metals/
+.bloop/
+dist/
+*.log
+.env
+__pycache__/

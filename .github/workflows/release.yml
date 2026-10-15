@@ -1,0 +1,50 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Tag matches the source version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          source = Path("app/src/main/scala/com/worxbend/airgradient/Main.scala").read_text()
+          version = re.search(r'val Version\s*=\s*"([^"]+)"', source).group(1)
+          assert re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", os.environ["RELEASE_TAG"])
+          assert os.environ["RELEASE_TAG"] == "v" + version
+          PY
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          path: artifacts
+      - name: Verify and combine validated artifacts
+        run: |
+          (cd artifacts/airgradient-tui-jvm && sha256sum --check SHA256SUMS)
+          (cd artifacts/airgradient-tui-linux-amd64 && sha256sum --check SHA256SUMS)
+          mkdir -p release
+          cp artifacts/airgradient-tui-jvm/airgradient-tui.jar release/
+          cp artifacts/airgradient-tui-linux-amd64/*.tar.gz release/
+          (cd release && sha256sum airgradient-tui.jar *.tar.gz > SHA256SUMS)
+      - name: Publish release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" release/* --verify-tag --title "AirGradient TUI $RELEASE_TAG" --generate-notes
