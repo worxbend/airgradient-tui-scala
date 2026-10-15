@@ -153,6 +153,7 @@ python3 scripts/smoke-pty.py --binary dist/airgradient-tui
 CI runs the test suite and packaged JAR on JDK 25 and 26, checks published dependency
 resolution and screenshot reproducibility, then builds and exercises a Linux amd64
 native executable. Runnable artifacts and SHA256 checksums are attached to successful CI runs.
+Native builds target GraalVM's compatibility CPU baseline rather than the builder's newer instruction set.
 Release tags matching `Main.Version` can publish the same validated artifacts through the release workflow.
 
 The network tests use a local mock HTTP server. Terminal lifecycle tests use real

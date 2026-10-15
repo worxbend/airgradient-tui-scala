@@ -27,5 +27,5 @@ object native extends SbtModule with NativeImageModule {
   def moduleDeps = Seq(app)
   def mainClass = app.mainClass()
   def jvmVersion = "graalvm-community:25.0.2"
-  def nativeImageOptions = Seq("--no-fallback", "--enable-native-access=ALL-UNNAMED")
+  def nativeImageOptions = Seq("--no-fallback", "-march=compatibility", "--enable-native-access=ALL-UNNAMED")
 }
