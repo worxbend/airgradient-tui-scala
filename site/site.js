@@ -1,5 +1,14 @@
 const tabs = [...document.querySelectorAll('[role="tab"]')];
 
+const themePicker = document.getElementById('theme-picker');
+themePicker.addEventListener('change', () => {
+  const preview = document.getElementById('theme-preview');
+  const name = themePicker.selectedOptions[0].textContent;
+  preview.src = `assets/themes/${themePicker.value}.svg`;
+  preview.alt = `${name} theme: actual AirGradient dashboard with synthetic demo readings.`;
+  document.getElementById('theme-command').textContent = `./airgradient-tui --demo --theme ${themePicker.value}`;
+});
+
 function selectTab(tab) {
   for (const item of tabs) {
     const selected = item === tab;

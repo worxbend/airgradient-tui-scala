@@ -1,0 +1,30 @@
+ AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
+[ [Overview] ]   [ History ]   [ Settings ]
+OFFLINE / Synthetic device offline / retry with r / no reading yet
+╭YOUR ROOM / ready when you are────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│Connect an AirGradient monitor on your LAN.                                                                           │
+│Press c for settings. Try --demo to explore without hardware.                                                         │
+│Unavailable readings stay unavailable. Your data stays local.                                                         │
+│ [ Open settings ]    [ Commands ]                                                                                    │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+r refresh   h history   c settings   t theme   ^p commands   ? help   q quit                                grafana

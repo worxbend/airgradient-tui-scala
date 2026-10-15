@@ -29,7 +29,7 @@ Built with **Scala 3** + **[Glyphora](https://github.com/worxbend/glyphora)**. P
 
 <br><br>
 
-**📡 Direct to your monitor &nbsp; 🏡 Local history &nbsp; 🎨 Three palettes &nbsp; 🫧 Offline demo**
+**📡 Direct to your monitor &nbsp; 🏡 Local history &nbsp; 🎨 15 palettes &nbsp; 🫧 Offline demo**
 
 No cloud account. No API token. No GitHub Packages credentials.
 
@@ -93,8 +93,8 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 | | The good stuff |
 | :---: | --- |
 | 📡 | **Live readings** — AQI, CO₂, particulate measurements, TVOC/NOx indices, temperature, humidity. |
-| 📈 | **History with context** — elapsed-time charts, selectable metrics, and gaps for missed samples. |
-| 🎨 | **Your terminal, your palette** — Aurora, Nord, and monochrome, with responsive layouts. |
+| 📈 | **History with context** — Braille time-series charts, labeled axes, sample means and peaks, and honest gaps. |
+| 🎨 | **Your terminal, your palette** — 15 themes, including Grafana-inspired dark and four light palettes. |
 | 🧭 | **Honest status** — stale readings show their age; missing readings stay visibly missing. |
 | 🏡 | **Local by default** — direct device requests, desktop-compatible settings, per-device history. |
 | 🫧 | **Try it offline** — deterministic demo; no network, config reads, or history writes. |
@@ -103,11 +103,13 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 <summary><strong>A few thoughtful details</strong></summary>
 
 - Live AQI, CO2, particulate measurements, TVOC and NOx indices, temperature, and humidity.
-- Responsive cards on wide terminals, a compact table on smaller terminals, and explicit resize guidance below 48×18.
+- Responsive sensor cards, dual charts and a reporting matrix on large terminals, a full inventory on compact terminals, and explicit resize guidance below 48×18.
 - History charts with actual elapsed time, selectable metrics, and breaks for missing samples or missed polls.
-- Aurora, Nord, and monochrome palettes; every status has a word as well as a color.
+- 15 palettes with semantic status colors; every status has a word as well as a color.
 - Last-known values stay on screen after a failed refresh, marked **STALE** with their age.
 - Quiet in-app notifications when readings worsen into elevated bands or recover to Good.
+- Searchable commands for navigation, metrics, and named themes with <kbd>Ctrl</kbd>+<kbd>p</kbd>.
+- Current, minimum, sample-mean, and peak history summaries, plus threshold-band observation counts.
 - Session settings and an editor that merges changes into the shared desktop JSON.
 - A deterministic demo that performs no network requests, config reads, or history writes.
 
@@ -122,6 +124,7 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 | <kbd>j</kbd> / <kbd>k</kbd> | Next / previous history metric |
 | <kbd>c</kbd> | Settings |
 | <kbd>t</kbd> | Preview the next theme |
+| <kbd>Ctrl</kbd>+<kbd>p</kbd> | Search commands, themes, and metric histories |
 | <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Move between controls |
 | <kbd>Ctrl</kbd>+<kbd>s</kbd> | Save settings |
 | <kbd>?</kbd> | Keyboard guide |
@@ -129,6 +132,33 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 | <kbd>q</kbd> | Quit (outside text editing) |
 
 Buttons also support mouse activation. The theme preview is session-only until saved.
+In Settings, focus the theme chooser and press Enter to open it. Use the arrow keys
+and Enter to select; Esc closes the chooser before leaving Settings.
+
+### 🎨 Find your palette
+
+Preview all 15 themes in the **[interactive theme gallery](https://worxbend.github.io/airgradient-tui-scala/#themes-title)**.
+Every preview is captured from the actual Glyphora renderer with synthetic demo data.
+
+| Theme | Look | Theme | Look |
+| --- | --- | --- | --- |
+| `aurora` | Deep navy + electric cyan | `grafana` | Graphite + warm orange |
+| `nord` | Slate + arctic blue | `ocean` | Deep sea + turquoise |
+| `mono` | High contrast + ASCII glyphs | `forest` | Evergreen + fresh green |
+| `ember` | Warm charcoal + amber | `sunset` | Aubergine + peach |
+| `lavender` | Ink violet + lilac | `rose` | Dark plum + pink |
+| `cobalt` | Midnight blue + cobalt | `paper` | White + deep blue |
+| `sand` | Warm ivory + terracotta | `frost` | Ice blue + teal |
+| `mint` | Pale green + emerald | | |
+
+```sh
+./mill app.run --demo --theme grafana
+./mill app.run --demo --theme paper
+```
+
+Press <kbd>t</kbd> to cycle through the collection. Save with <kbd>Ctrl</kbd>+<kbd>s</kbd>
+in Settings to keep a theme. CLI overrides and previews stay session-only until saved;
+demo mode never writes your configuration.
 
 <details>
 <summary><strong>📈 A peek at history</strong></summary>
@@ -145,6 +175,25 @@ Synthetic data captured from the actual Glyphora renderer.
 ![Settings view rendered with synthetic demo data](docs/assets/settings.svg)
 
 Synthetic demo configuration captured from the actual Glyphora renderer.
+
+</details>
+
+<details>
+<summary><strong>🖥️ A wider workspace</strong></summary>
+
+![Wide Glyphora dashboard with dual charts and a reporting matrix, using synthetic data](docs/assets/dashboard-wide.svg)
+
+Grafana-inspired palette at 160×44. Every reporting-matrix column represents a successful sample;
+filled cells mean the sensor supplied a reading, and blank cells mean it did not.
+
+</details>
+
+<details>
+<summary><strong>⌨ A compact workspace</strong></summary>
+
+![Compact Glyphora dashboard retaining every sensor reading, using synthetic data](docs/assets/dashboard-compact.svg)
+
+The full inventory stays available at 60×24, with a smaller layout down to 48×18.
 
 </details>
 
@@ -180,6 +229,10 @@ numeric strings and nested aliases, compensated temperature/humidity, the monito
 particulate compensation switch, bounded sensor values, and explicit AQI before PM2.5-derived AQI.
 Missing values are `--` in the UI and `null` in JSON. TVOC/NOx values are indices.
 The displayed PM2.5-derived AQI is an estimate from the current sample, not a 24-hour exposure average.
+History means are arithmetic means of reported samples, not time-weighted exposure averages.
+Card sparklines show relative variation within each metric's recent sample window;
+their heights are not comparable across cards. Below-zero readings remain visible and use the signed history chart.
+Chart axes adapt to observed values and include bounds; missing readings and missed polls break the line.
 See [architecture and contracts](docs/architecture.md).
 
 ## 🧩 A real Glyphora consumer
@@ -250,7 +303,8 @@ python3 scripts/capture-snapshots.py
 ### Microsite
 
 The [project microsite](https://worxbend.github.io/airgradient-tui-scala/) lives in [`site/`](site/).
-It uses plain HTML, CSS, and JavaScript; there is no frontend build step.
+It uses plain HTML, CSS, and JavaScript. The Python staging script builds the theme picker
+from the renderer's theme manifest; no frontend package installation is needed.
 Preview the same files that GitHub Pages deploys:
 
 ```sh

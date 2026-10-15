@@ -87,3 +87,37 @@ final class DashboardSpec extends AnyFunSuite:
       assert(pilot.screenText.contains("not reported"))
       assert(pilot.screenText.contains("Unknown"))
     }
+
+  test("every reading remains visible from a wide workstation to the minimum supported terminal"):
+    withApp(Vector(Right(Demo.snapshot(0)))) { (_, pilot, _, _) =>
+      Vector((160, 44), (120, 30), (90, 28), (80, 24), (60, 24), (48, 18)).foreach { (width, height) =>
+        pilot.resize(width, height).waitForIdle()
+        Metric.values.foreach(metric =>
+          assert(pilot.screenText.contains(metric.label), s"${metric.label} at $width x $height")
+        )
+      }
+    }
+
+  test("command search selects a named theme and opens a metric's history"):
+    withApp(Vector(Right(Demo.snapshot(0)))) { (app, pilot, _, _) =>
+      pilot.press("ctrl+p").typeText("paper").waitForIdle()
+      assert(pilot.screenText.contains("Use theme paper"))
+      pilot.press("enter").waitForIdle()
+      assert(app.theme.name == "paper")
+      pilot.press("ctrl+p").typeText("Inspect PM2.5 history").press("enter").waitForIdle()
+      assert(pilot.screenText.contains("HISTORY / PM2.5"))
+    }
+
+  test("the theme dropdown responds to mouse and keyboard, and Escape closes it before leaving settings"):
+    withApp(Vector(Right(Demo.snapshot(0)))) { (app, pilot, _, _) =>
+      pilot.press("c").waitForIdle()
+      val lines = pilot.screenLines
+      val y     = lines.indexWhere(_.contains("▸"))
+      assert(y >= 0)
+      pilot.click(lines(y).indexOf("aurora"), y).waitForIdle()
+      assert(pilot.screenText.contains("grafana"))
+      pilot.press("esc").waitForIdle()
+      assert(pilot.screenText.contains("SETTINGS"))
+      pilot.press("enter").press("down").press("enter").waitForIdle()
+      assert(app.theme.name == "nord")
+    }

@@ -19,7 +19,8 @@ flowchart LR
 - **DeviceClient.scala** owns URL normalization, HTTP, a five-second whole-response deadline, the one-MiB streaming limit, and request cancellation. Redirects are reported rather than followed.
 - **Persistence.scala** owns shared-config merges, content fingerprints, atomic replacements, and a separate bounded history store.
 - **Dashboard.scala** owns reactive state and lifecycle. A task scope is created on the render owner in `onStart`; timer and request callbacks return to that owner.
-- **Palettes.scala** holds semantic colors. Views ask for status styles instead of embedding ANSI color codes.
+- **Telemetry.scala** derives pure, per-metric sample summaries and gap-aware chart segments. A long-lived Glyphora `Computed` caches these until readings or the refresh interval change, rather than recomputing on age ticks. The dashboard disposes it on shutdown. Missing readings never become zeroes; last-sample deltas are withheld across missing readings or missed polls. Means describe reported samples rather than time-weighted exposure.
+- **Palettes.scala** holds 15 semantic palettes, including a Grafana-inspired dark palette and four light palettes. The catalog supplies CLI validation, settings persistence, keyboard cycling, and renderer previews. Views ask for status styles instead of embedding ANSI color codes. New palettes keep semantic text at a contrast ratio of at least 4.5:1 on their base and raised surfaces, and borders at least 3:1. Focus and loading styles derive from the same palette.
 - **Main.scala** owns command parsing, session overrides, one-shot output, startup, and exit codes.
 
 Only one request is in flight per polling session. Changing settings retires the old scope,
@@ -49,7 +50,21 @@ Config fingerprint checks detect ordinary concurrent changes but cannot eliminat
 with clients that do not participate in locking. History files belong to this application;
 the Rust CLI's history is neither imported nor modified.
 
+The presentation uses Glyphora responsive layouts, semantic badges and surfaces, gauges,
+sparklines, labeled Braille charts (cell markers in ASCII mode), a reporting heatmap,
+interactive dropdowns, command search, tables, buttons, notices, scoped notifications, and help overlays.
+Metric series accents derive from palette colors. Card sparklines normalize each recent
+window independently; signed measurements use the history chart rather than being clamped to zero.
+The reporting matrix describes presence or absence of values in successful samples;
+it does not imply that failed polls produced observations. The compact inventory retains
+all metrics at 48×18, and the wide layout exposes dual charts at 140 columns and above.
+
 Testing covers parser fixtures, boundaries and missing values; real HTTP error paths;
 config preservation/conflicts; history retention; reactive UI transitions and resize;
 deterministic actual-renderer captures; and packaged applications in real pseudo-terminals.
+Theme tests also cover contrast, complete preview cycling and wraparound, offline demo behavior,
+and saving every palette without discarding other clients' fields. Interaction tests cover
+named commands, dropdown mouse/keyboard handling and Escape precedence, and all readings at six terminal sizes.
+Screenshot verification checks every theme's actual dashboard capture and the gallery manifest,
+alongside all three screens, wide/compact/minimal layouts, help, command search, and the theme chooser.
 These checks establish software behavior with synthetic devices, not physical sensor accuracy.

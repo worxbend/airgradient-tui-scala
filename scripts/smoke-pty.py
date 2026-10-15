@@ -3,6 +3,7 @@
 import argparse
 import codecs
 import fcntl
+import json
 import os
 import select
 import signal
@@ -54,20 +55,43 @@ def expect(token):
     raise AssertionError(f"Expected {token!r}; exit={process.poll()}\n" + "\n".join(screen.display))
 
 try:
-    expect(b"AIRGRADIENT")
+    expect(b"q quit")
     os.write(master, b"h")
     expect(b"HISTORY")
     os.write(master, b"\x1b")
     time.sleep(0.15)
     os.write(master, b"c")
     expect(b"SETTINGS")
+    themes = json.loads((Path(__file__).resolve().parents[1] / "docs/assets/themes.json").read_text())
+    for theme in themes[1:] + themes[:1]:
+        os.write(master, b"t")
+        expect(f"Theme: {theme} /".encode())
     os.write(master, b"\x1b")
     time.sleep(0.15)
+    os.write(master, b"\x10")
+    expect(b"Commands")
+    os.write(master, b"paper")
+    expect(b"Use theme paper")
+    os.write(master, b"\r")
+    expect(b"Theme: paper")
+    os.write(master, b"\x10")
+    expect(b"Commands")
+    os.write(master, b"Inspect PM2.5 history")
+    expect(b"Inspect PM2.5 history")
+    os.write(master, b"\r")
+    expect(b"HISTORY / PM2.5")
+    os.write(master, b"\x1b")
+    time.sleep(0.15)
+    for width, height, token in ((48, 18, b"Particles >0.3"), (160, 44, b"REPORTING / recent samples")):
+        screen.resize(lines=height, columns=width)
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", height, width, 0, 0))
+        os.killpg(process.pid, signal.SIGWINCH)
+        expect(token)
     os.write(master, b"q")
     assert process.wait(timeout=10) == 0
     after = termios.tcgetattr(slave)
     assert before == after, "Application did not restore the original terminal settings"
-    print("Real PTY: dashboard, history, settings, clean quit, terminal restoration passed")
+    print(f"Real PTY: dashboard, history, settings, all {len(themes)} themes, command search, resize, clean quit, terminal restoration passed")
 finally:
     if process.poll() is None:
         os.killpg(process.pid, signal.SIGKILL)

@@ -1,7 +1,7 @@
 package com.worxbend.airgradient
 
 import io.worxbend.tui.dsl.*
-import io.worxbend.tui.widgets.{ChartOptions, TextInputState}
+import io.worxbend.tui.widgets.{BigText, CanvasResolution, ChartOptions, DropdownState, Heatmap, TextInputState}
 import scala.concurrent.duration.DurationInt
 
 enum Page:
@@ -25,6 +25,8 @@ final class Dashboard(
   private val themeName               = Signal(
     if Palettes.names.contains(initial.settings.theme) then initial.settings.theme else "aurora"
   )
+  private val analytics                   = Computed(Telemetry.analyze(history.get, settings.get.refreshSeconds))
+  private val themeDropdown               = DropdownState()
   private val clock                       = Signal(now())
   private val selectedMetric              = Signal(1)
   private val help                        = Signal(false)
@@ -47,6 +49,7 @@ final class Dashboard(
     polling.foreach(_.close())
     lifetime.foreach(_.close())
     sensor.close()
+    analytics.dispose()
 
   override def bindings: KeyBindings = KeyBindings(
     binding("q", "quit")(quit()),
@@ -62,6 +65,21 @@ final class Dashboard(
     binding("j", "next metric")(selectedMetric.update(i => (i + 1) % Metric.values.length)).copy(showInHints = false),
     binding("k", "previous metric")(selectedMetric.update(i => (i + Metric.values.length - 1) % Metric.values.length))
       .copy(showInHints = false)
+  ) ++ KeyBindings(
+    (Palettes.names
+      .map(name => KeyBinding(Seq.empty, "theme", s"Use theme $name", () => previewTheme(name), showInHints = false)) ++
+      Metric.values.map(metric =>
+        KeyBinding(
+          Seq.empty,
+          "metric",
+          s"Inspect ${metric.label} history",
+          () => {
+            selectedMetric.set(metric.ordinal)
+            page.set(Page.History)
+          },
+          showInHints = false
+        )
+      ))*
   )
 
   private def address: Option[DeviceAddress] =
@@ -111,8 +129,11 @@ final class Dashboard(
 
   private def cycleTheme(): Unit =
     val next = Palettes.names((Palettes.names.indexOf(themeName.peek) + 1) % Palettes.names.size)
-    themeName.set(next)
-    message.set(s"Theme: $next (session only; save in Settings to keep)")
+    previewTheme(next)
+
+  private def previewTheme(name: String): Unit =
+    themeName.set(name)
+    message.set(s"Theme: $name (session only; save in Settings to keep)")
 
   private def openSettings(): Unit =
     page.set(Page.Settings)
@@ -172,14 +193,22 @@ final class Dashboard(
         panel("AirGradient")(text("Please resize to at least 48 x 18."), text("q: quit")).rounded
       else
         val content = page.get match
-          case Page.Overview => overview(size.width)
-          case Page.History  => historyPage
-          case Page.Settings => settingsPage
+          case Page.Overview => overview(size)
+          case Page.History  => historyPage(size)
+          case Page.Settings => settingsPage(size)
         val shell = column(
-          topBar(
-            "AIRGRADIENT",
-            right = if demo then "DEMO / synthetic" else address.fold("LOCAL / unconfigured")(_.base.getAuthority)
-          ).length(1),
+          row(
+            text(" AIRGRADIENT").bold.styled(_ => palette.accent).length(15),
+            text(if size.width >= 100 then "air quality / local observatory" else "air quality")
+              .styled(_ => palette.muted)
+              .fill,
+            (if size.width >= 110 then
+               text(if demo then "offline demo" else address.fold("unconfigured")(_.base.getAuthority))
+                 .styled(_ => palette.muted)
+                 .length(25)
+             else spacer.length(0)),
+            badge(if demo then "DEMO / synthetic" else "LOCAL API").outline
+          ).styled(_ => palette.surface).length(1),
           row(
             Page.values.map(p =>
               button(if page.get == p then s"[${p.toString}]" else p.toString) {
@@ -189,157 +218,404 @@ final class Dashboard(
           ).length(1),
           connectionLine.length(1),
           content.fill,
-          (if message.get.nonEmpty then text(message.get).styled(_ => palette.muted)
-           else text("r refresh  h history  c settings  t theme  ? help  q quit").dim).length(1)
-        ).styled(_.patch(palette.primary))
+          footer(size.width).length(1)
+        ).styled(_ => palette.primary)
         if help.get then
           layers(
             shell,
-            centered(math.min(size.width - 4, 64), 12)(
-              panel("Keyboard guide")(
-                text("r  refresh now       h  overview / history"),
-                text("c  settings          t  preview next theme"),
+            centered(math.min(size.width - 4, 70), 14)(
+              panel("Keyboard guide / make yourself at home")(
+                text("r  refresh now          h  overview / history"),
+                text("c  settings             t  preview next theme"),
                 text("j/k  select history metric"),
+                text("Ctrl+p  search commands, metrics, and themes"),
                 text("Tab / Shift+Tab  move between controls"),
-                text("Ctrl+s  save settings     Esc  back / quit"),
-                text("?  close this guide      q  quit"),
-                text("Demo never writes your settings or history.").dim
-              ).rounded.styled(_.patch(palette.surface))
+                text("Ctrl+s  save settings   Esc  back / quit"),
+                text("?  close this guide     q  quit outside editing"),
+                rule(),
+                text("Demo uses synthetic readings and never writes to disk.").styled(_ => palette.muted),
+                text("AQI is a current reading, not a 24-hour average.").styled(_ => palette.muted)
+              ).rounded.styled(_ => palette.surface)
             )
           )
         else shell
     }
+
+  private def footer(width: Int)(using ReactiveScope, Theme): Element =
+    if message.get.nonEmpty then text(message.get).styled(_ => summon[Theme].muted)
+    else if width < 75 then text("r refresh  h history  c settings  ? help  q quit").styled(_ => summon[Theme].muted)
+    else
+      row(
+        text("r refresh   h history   c settings   t theme   ^p commands   ? help   q quit").fill,
+        text(themeName.get).styled(_ => summon[Theme].accent).length(12)
+      )
 
   private def connectionLine(using ReactiveScope, Theme): Element =
     val latest = history.get.lastOption
     val age    = latest.fold("no reading yet")(s => s"updated ${math.max(0L, (clock.get - s.atMillis) / 1000)}s ago")
     problem.get match
       case Some(error) =>
-        text(s"${if latest.nonEmpty then "STALE" else "OFFLINE"} / $error / $age").styled(_ => summon[Theme].error)
+        val retry = if fetching.get then " / RECONNECTING" else ""
+        text(s"${if latest.nonEmpty then "STALE" else "OFFLINE"}$retry / $error / $age").styled(_ =>
+          summon[Theme].error
+        )
       case None if fetching.get => text(s"FETCHING / $age").styled(_ => summon[Theme].accent)
       case None                 =>
         text(
           s"${if demo then "DEMO" else "LIVE"} / $age / every ${settings.get.refreshSeconds}s / ${history.get.size} samples"
-        ).styled(_ => summon[Theme].muted)
+        )
+          .styled(_ => summon[Theme].muted)
 
-  private def overview(width: Int)(using ReactiveScope, Theme): Element =
+  private def overview(size: Size)(using ReactiveScope, Theme): Element =
     history.get.lastOption match
       case None =>
-        panel("Your room, at a glance")(
+        panel(if fetching.get then "CONNECTING / your room, at a glance" else "YOUR ROOM / ready when you are")(
           spacer,
-          text(if fetching.get then "Connecting to your AirGradient..."
-          else "Connect an AirGradient monitor on your LAN."),
-          text("Press c for settings. Try --demo to explore without hardware.").dim,
+          (if fetching.get then spinner("Connecting to your AirGradient...")
+           else text("Connect an AirGradient monitor on your LAN.").bold).length(1),
+          text("Press c for settings. Try --demo to explore without hardware.")
+            .styled(_ => summon[Theme].muted)
+            .length(1),
+          text("Unavailable readings stay unavailable. Your data stays local.")
+            .styled(_ => summon[Theme].muted)
+            .length(1),
+          row(button("Open settings")(openSettings()).length(20), button("Commands")(openPalette()).length(16))
+            .length(1),
           spacer
-        ).rounded
+        ).rounded.styled(_ => summon[Theme].surface)
       case Some(sample) =>
         val snapshot = sample.snapshot
-        val aqi      = snapshot.value(Metric.Aqi)
-        val band     = Metric.Aqi.classify(aqi)
-        val hero     = panel("AIR QUALITY / PM2.5 snapshot")(
-          row(
-            text(s"${Metric.Aqi.format(aqi)} US AQI").bold.styled(_ => Palettes.bandStyle(band)).length(20),
-            text(band.label).bold.styled(_ => Palettes.bandStyle(band)).fill
-          ).length(1),
-          gauge(aqi.getOrElse(0.0) / 500)
-            .label(if aqi.isEmpty then "unavailable" else "0                                                500")
-            .ramp(ColorRamp.Traffic)
-            .length(1),
-          text(if snapshot.aqiDerived then "Estimated from current PM2.5; not a 24-hour exposure average."
-          else "AQI reported by the device.").dim.length(1)
-        ).rounded.length(5)
-        val metrics = Metric.values.filterNot(_ == Metric.Aqi).toVector
-        if width < 90 then column(hero, panel("Measurements")(metrics.map(m => metricRow(m, snapshot))*).fill)
+        val metrics  = Vector(
+          Metric.Co2,
+          Metric.Pm25,
+          Metric.Tvoc,
+          Metric.Temperature,
+          Metric.Humidity,
+          Metric.Nox,
+          Metric.Pm1,
+          Metric.Pm10,
+          Metric.Particles
+        )
+        if size.width < 90 || size.height < 28 then
+          val tablePanel = panel("SENSOR INVENTORY / current readings")(
+            metrics.map(m => metricRow(m, snapshot))*
+          ).rounded.length(11)
+          val summary = if size.height < 24 then
+            row(
+              text(s"${Metric.Aqi.format(snapshot.value(Metric.Aqi))} US AQI").bold
+                .styled(_ => Palettes.bandStyle(Metric.Aqi.classify(snapshot.value(Metric.Aqi))))
+                .length(15),
+              text(Metric.Aqi.classify(snapshot.value(Metric.Aqi)).label).fill
+            ).length(1)
+          else aqiPanel(snapshot).length(5)
+          if size.height >= 30 then column(summary, tablePanel, timeline(Metric.Co2, "CO2 / recent samples (ppm)").fill)
+          else
+            column(
+              summary,
+              tablePanel,
+              text("h history / c settings / Ctrl+p commands").styled(_ => summon[Theme].muted).length(1),
+              spacer
+            )
         else
-          val cards = metrics
-            .filterNot(_ == Metric.Particles)
-            .grouped(4)
-            .map(group => row(group.map(m => card(m, snapshot).fill)*).gap(1).length(5))
-            .toSeq
-          column((Seq(hero) ++ cards ++ Seq(panel("CO2 / recent samples (ppm)")(historyChart(Metric.Co2)).fill))*)
+          val expanded = size.width >= 140 && size.height >= 42
+          val summary  = row(
+            (if expanded then largeAqiPanel(snapshot) else aqiPanel(snapshot)).fill(2),
+            roomPanel(snapshot, expanded).fill(3)
+          ).gap(1).length(if expanded then 9 else 5)
+          val cards =
+            metrics.grouped(3).map(group => row(group.map(m => card(m, snapshot).fill)*).gap(1).length(4)).toVector
+          val charts = if size.width >= 140 && size.height >= 38 then
+            row(
+              timeline(Metric.Co2, "CO2 / ventilation trend (ppm)").fill(2),
+              timeline(Metric.Pm25, "PM2.5 / particulate trend (ug/m3)").fill(2),
+              reportingMatrix(size.width).fill
+            ).gap(1)
+          else if size.width >= 140 then
+            row(
+              timeline(Metric.Co2, "CO2 / ventilation trend (ppm)").fill,
+              timeline(Metric.Pm25, "PM2.5 / particulate trend (ug/m3)").fill
+            ).gap(1)
+          else timeline(Metric.Co2, "CO2 / recent samples (ppm)")
+          column((Vector(summary) ++ cards :+ charts.fill)*)
+
+  private def reportingMatrix(width: Int)(using ReactiveScope, Theme): Element =
+    val metrics = Metric.values.filterNot(_ == Metric.Aqi).toVector
+    val samples = history.get.takeRight(math.min(12, math.max(1, width / 5 - 17)))
+    val labels  = column(metrics.map(metric => text(metric.label).length(1))*).length(9)
+    val matrix  = if summon[Theme].glyphs == GlyphSupport.Ascii then
+      column(
+        metrics.map(metric =>
+          text(samples.map(s => if s.snapshot.value(metric).isDefined then "#" else ".").mkString).length(1)
+        )*
+      ).length(9)
+    else
+      widget(
+        Heatmap(
+          metrics.map(metric => samples.map(sample => if sample.snapshot.value(metric).isDefined then 1.0 else 0.0)),
+          style = summon[Theme].accent
+        )
+      ).length(9)
+    panel("REPORTING / recent samples")(
+      row(labels.length(14), matrix.fill).length(9),
+      text("Each column is a sample.").styled(_ => summon[Theme].muted).length(1),
+      text(if summon[Theme].glyphs == GlyphSupport.Ascii then "# = available" else "Filled = available")
+        .styled(_ => summon[Theme].muted)
+        .length(1),
+      text(if summon[Theme].glyphs == GlyphSupport.Ascii then ". = missing" else "Blank = missing")
+        .styled(_ => summon[Theme].muted)
+        .length(1),
+      text(s"Last ${samples.size} successful samples.").styled(_ => summon[Theme].muted).length(1),
+      spacer
+    ).rounded.styled(_ => summon[Theme].surface)
+
+  private def aqiPanel(snapshot: Snapshot)(using Theme): Element =
+    val value = snapshot.value(Metric.Aqi)
+    val band  = Metric.Aqi.classify(value)
+    panel("AIR QUALITY / current AQI")(
+      row(
+        text(s"${Metric.Aqi.format(value)} US AQI").bold.styled(_ => Palettes.bandStyle(band)).fill,
+        badge(band.label).outline.styled(_ => Palettes.bandStyle(band))
+      ).length(1),
+      (if value.isEmpty then text("not reported / unavailable")
+       else gauge(value.get / 500).label("current AQI / 0 to 500").styled(_ => Palettes.bandStyle(band))).length(1),
+      text(if snapshot.aqiDerived then "PM2.5 estimate / not a 24h average."
+      else "AQI reported by the device.").styled(_ => summon[Theme].muted).length(1)
+    ).rounded
+
+  private def largeAqiPanel(snapshot: Snapshot)(using Theme): Element =
+    val value  = snapshot.value(Metric.Aqi)
+    val band   = Metric.Aqi.classify(value)
+    val number = Metric.Aqi.format(value)
+    panel("AIR QUALITY / current US AQI")(
+      row(
+        widget(
+          BigText(
+            number,
+            style = Palettes.bandStyle(band),
+            pixel = if summon[Theme].glyphs == GlyphSupport.Ascii then "#" else "█"
+          )
+        )
+          .length(14),
+        column(
+          text(s"$number US AQI").bold.length(1),
+          badge(band.label).outline.styled(_ => Palettes.bandStyle(band)).length(1),
+          spacer,
+          text("Current sample / US AQI scale").styled(_ => summon[Theme].muted).length(1),
+          text("Lower AQI is better.").styled(_ => summon[Theme].muted).length(1)
+        ).fill
+      ).gap(2).length(5),
+      (if value.isEmpty then text("not reported / unavailable")
+       else gauge(value.get / 500).label("current AQI / 0 to 500").styled(_ => Palettes.bandStyle(band))).length(1),
+      text(if snapshot.aqiDerived then "PM2.5 estimate / not a 24h average." else "AQI reported by the device.")
+        .styled(_ => summon[Theme].muted)
+        .length(1)
+    ).rounded
+
+  private def roomPanel(snapshot: Snapshot, expanded: Boolean)(using ReactiveScope, Theme): Element =
+    val available = Metric.values.count(m => snapshot.value(m).nonEmpty)
+    val trend     = analytics.get.metrics(Metric.Co2)
+    val band      = snapshot.worst
+    panel("ROOM SIGNAL / available readings")(
+      row(
+        text(band.label).bold.styled(_ => Palettes.bandStyle(band)).length(20),
+        text(s"$available / ${Metric.values.length} available").styled(_ => summon[Theme].muted).fill
+      ).length(1),
+      text(if band.ordinal >= Band.Elevated.ordinal then "Elevated readings / inspect the sensor cards below."
+      else if available < Metric.values.length then "Some readings are unavailable. No zeroes are substituted."
+      else "All readings available / local API / no cloud account.").length(1),
+      text(s"CO2 sample mean ${Metric.Co2.format(trend.average)} ppm / peak ${Metric.Co2.format(trend.maximum)} ppm")
+        .styled(_ => summon[Theme].muted)
+        .length(1),
+      (if expanded then
+         column(
+           rule().length(1),
+           text(
+             s"${history.get.size} successful observations / ${math.round(analytics.get.minutes)} minutes of history"
+           ).length(1),
+           text("h / explore trends     Ctrl+p / jump to a sensor").styled(_ => summon[Theme].muted).length(1),
+           text("Freshness is based on receipt time, not device time.").styled(_ => summon[Theme].muted).length(1)
+         ).length(4)
+       else spacer.length(0))
+    ).rounded.styled(_ => summon[Theme].surface)
 
   private def metricRow(metric: Metric, snapshot: Snapshot)(using Theme): Element =
     val value = snapshot.value(metric)
     row(
-      text(metric.label).length(17),
-      text(s"${metric.format(value)} ${metric.unit}").length(19),
+      text(metric.label).length(14),
+      text(s"${metric.format(value)} ${metric.unit}").bold.length(16),
       text(metric.classify(value).label).styled(_ => Palettes.bandStyle(metric.classify(value))).fill
-    ).length(1)
+    ).gap(1).length(1)
 
   private def card(metric: Metric, snapshot: Snapshot)(using ReactiveScope, Theme): Element =
     val value = snapshot.value(metric)
     val band  = metric.classify(value)
-    panel(metric.label)(
-      row(text(s"${metric.format(value)} ${metric.unit}").bold.fill, text(band.label).length(14)).length(1),
-      (if value.isEmpty then text("not reported")
-       else progressBar(value.get / metric.ceiling).bare.ramp(ColorRamp.Traffic)).length(1),
-      sparkRow(metric).length(1)
-    ).rounded.styled(_.patch(Palettes.bandStyle(band)))
+    panel(s"${metric.label} / ${metric.unit}")(
+      row(
+        text(s"${metric.format(value)} ${metric.unit}").bold.fill,
+        text(band.label).styled(_ => Palettes.bandStyle(band)).length(14)
+      ).length(1),
+      (if value.isEmpty then text("not reported").styled(_ => summon[Theme].muted)
+       else sparkRow(metric)).length(1)
+    ).rounded.styled(_ => summon[Theme].surface)
 
   private def sparkRow(metric: Metric)(using ReactiveScope, Theme): Element =
-    val series = history.get.takeRight(80).map(_.snapshot.value(metric))
-    if series.exists(_.isEmpty) then text("gaps / some samples not reported").dim
+    val series = analytics.get.metrics(metric).values.takeRight(80)
+    if series.exists(_.isEmpty) then text("gaps / some samples not reported").styled(_ => summon[Theme].muted)
+    else if series.flatten.exists(_ < 0) then text("below zero / see history").styled(_ => summon[Theme].muted)
     else
-      sparkline(series.flatten.map(n => math.round(math.max(0, n) * 10)))
-        .max(math.round(metric.ceiling * 10))
-        .styled(_ => summon[Theme].accent)
+      val values     = series.flatten
+      val minimum    = values.minOption.getOrElse(0.0)
+      val maximum    = values.maxOption.getOrElse(0.0)
+      val normalized =
+        values.map(n => if maximum == minimum then 4.0 else 1.0 + (n - minimum) / (maximum - minimum) * 6.0)
+      if summon[Theme].glyphs == GlyphSupport.Ascii then
+        val shades = " .:-=+*#@"
+        text(normalized.takeRight(24).map(n => shades(math.min(shades.length - 1, math.round(n).toInt))).mkString)
+          .styled(_ => summon[Theme].accent)
+      else
+        sparkline(normalized.map(n => math.round(n * 100)))
+          .max(800)
+          .rightToLeft
+          .styled(_ => Palettes.seriesStyle(metric))
 
-  private def historyPage(using ReactiveScope, Theme): Element =
-    val metric  = Metric.values(selectedMetric.get)
-    val samples = history.get
-    val valid   = samples.flatMap(s => s.snapshot.value(metric).map(n => s.atMillis -> n))
-    if valid.isEmpty then
-      panel("History")(text(s"No ${metric.label} samples yet."), text("j/k: choose another metric").dim)
-    else
-      panel(s"HISTORY / ${metric.label} (${metric.unit})")(
-        row(
-          button("Previous")(selectedMetric.update(i => (i + 9) % 10)).length(14),
-          text(s"${metric.label} / j,k to switch").fill,
-          button("Next")(selectedMetric.update(i => (i + 1) % 10)).length(10)
-        ).length(1),
-        historyChart(metric).fill,
-        text(
-          s"min ${metric.format(Some(valid.map(_._2).min))} / max ${metric.format(Some(valid.map(_._2).max))} / ${valid.size} samples / minutes since oldest sample"
-        ).dim.length(1),
-        text("Missing readings and missed polls break the line. History is local to this device.").dim.length(1)
-      ).rounded
+  private def timeline(metric: Metric, title: String)(using ReactiveScope, Theme): Element =
+    val trend = analytics.get.metrics(metric)
+    panel(title)(
+      historyChart(metric).fill,
+      text(s"mean ${metric.format(trend.average)} / peak ${metric.format(trend.maximum)} / ${trend.count} reported")
+        .styled(_ => summon[Theme].muted)
+        .length(1)
+    ).rounded
+
+  private def historyPage(size: Size)(using ReactiveScope, Theme): Element =
+    val metric     = Metric.values(selectedMetric.get)
+    val trend      = analytics.get.metrics(metric)
+    val navigation = row(
+      button("Previous")(selectedMetric.update(i => (i + Metric.values.length - 1) % Metric.values.length)).length(14),
+      text(s"${metric.label} / j,k to switch").bold.fill,
+      button("Next")(selectedMetric.update(i => (i + 1) % Metric.values.length)).length(10)
+    ).length(1)
+    val stats = row(
+      stat("CURRENT", metric.format(history.get.lastOption.flatMap(_.snapshot.value(metric))), metric.unit).fill,
+      stat("SAMPLE MEAN", metric.format(trend.average), metric.unit).fill,
+      stat("MINIMUM", metric.format(trend.minimum), metric.unit).fill,
+      stat("PEAK", metric.format(trend.maximum), metric.unit).fill
+    ).gap(1).length(4)
+    val plot = panel(s"HISTORY / ${metric.label} (${metric.unit})")(
+      historyChart(metric).fill,
+      text(s"${trend.count} reported / auto-scaled / minutes since oldest sample")
+        .styled(_ => summon[Theme].muted)
+        .length(1),
+      text("Missing readings and missed polls break the line.").styled(_ => summon[Theme].muted).length(1)
+    ).rounded
+    val graph = if size.width >= 120 then row(plot.fill(3), historyInspector(metric).fill).gap(1) else plot
+    if size.width < 75 then column(navigation, graph.fill)
+    else column(navigation, stats, graph.fill)
+
+  private def stat(label: String, value: String, unit: String)(using Theme): Element =
+    panel(label)(text(s"$value $unit").bold.styled(_ => summon[Theme].accent)).rounded.styled(_ =>
+      summon[Theme].surface
+    )
+
+  private def historyInspector(metric: Metric)(using ReactiveScope, Theme): Element =
+    val trend  = analytics.get.metrics(metric)
+    val counts = Band.values.map(band => Seq(band.label, trend.bands.getOrElse(band, 0).toString)).toVector
+    panel("OBSERVATIONS / sample counts")(
+      (Vector(table(counts, Constraint.Fill(1), Constraint.Length(7)).header("Band", "Samples").length(7)) ++
+        Vector(
+          rule().length(1),
+          text(s"Last change: ${metric.format(trend.delta)} ${metric.unit}")
+            .styled(_ => summon[Theme].accent)
+            .length(1),
+          text("Missing values are Unknown.").styled(_ => summon[Theme].muted).length(1),
+          text("Means use reported samples.").styled(_ => summon[Theme].muted).length(1),
+          text("Not time-weighted exposure.").styled(_ => summon[Theme].muted).length(1),
+          spacer
+        ))*
+    ).rounded.styled(_ => summon[Theme].surface)
 
   private def historyChart(metric: Metric)(using ReactiveScope, Theme): Element =
-    val samples = history.get
-    val valid   = samples.flatMap(_.snapshot.value(metric))
-    if valid.isEmpty then text("No samples available").dim
+    val analysis = analytics.get
+    val trend    = analysis.metrics(metric)
+    if trend.count == 0 then text(s"No ${metric.label} samples available").styled(_ => summon[Theme].muted)
     else
-      val start    = samples.head.atMillis
-      val end      = math.max(1.0, (samples.last.atMillis - start) / 60000.0)
-      val segments = samples
-        .foldLeft(Vector(Vector.empty[(Double, Double)])) { (groups, sample) =>
-          sample.snapshot.value(metric) match
-            case None    => groups :+ Vector.empty
-            case Some(n) =>
-              val point = (sample.atMillis - start) / 60000.0 -> n
-              if groups.last.lastOption.exists(p => point._1 - p._1 > settings.get.refreshSeconds * 1.5 / 60) then
-                groups :+ Vector(point)
-              else groups.init :+ (groups.last :+ point)
-        }
-        .filter(_.nonEmpty)
-      val datasets = segments.map(points => Dataset(metric.label, points, style = summon[Theme].accent))
-      chart(
+      val minimum  = trend.minimum.get
+      val maximum  = trend.maximum.get
+      val padding  = math.max(1.0, (maximum - minimum) * 0.15)
+      val low      = if metric == Metric.Temperature then minimum - padding else math.max(0, minimum - padding)
+      val datasets = trend.segments.map(points => Dataset(metric.label, points, style = Palettes.seriesStyle(metric)))
+      val plot     = chart(
         datasets,
-        Bounds(0, end),
-        Bounds(math.min(0, valid.min), math.max(metric.ceiling, valid.max * 1.05)),
-        ChartOptions(showLegend = false)
+        Bounds(0, math.max(1.0, analysis.minutes)),
+        Bounds(low, maximum + padding),
+        ChartOptions(
+          axisStyle = summon[Theme].muted,
+          marker = if summon[Theme].glyphs == GlyphSupport.Ascii then "." else "•",
+          resolution =
+            if summon[Theme].glyphs == GlyphSupport.Ascii then CanvasResolution.Cell else CanvasResolution.Braille,
+          showLabels = true,
+          xLabels = Seq("0 min", s"${math.round(analysis.minutes)} min"),
+          showLegend = false
+        )
       )
+      if summon[Theme].glyphs != GlyphSupport.Ascii then plot
+      else
+        widget { (area, buffer) =>
+          plot.widget.render(area, buffer)
+          buffer.foreachIn(area) { (x, y, cell) =>
+            val symbol = cell.symbol.map {
+              case '│' => '|'
+              case '─' => '-'
+              case '└' => '+'
+              case c   => c
+            }
+            if symbol != cell.symbol then buffer.set(x, y, cell.copy(symbol = symbol))
+          }
+        }
 
-  private def settingsPage(using ReactiveScope, Theme): Element =
-    panel("SETTINGS / shared with AirGradient desktop")(
+  private def settingsPage(size: Size)(using ReactiveScope, Theme): Element =
+    val form = panel("SETTINGS / shared with AirGradient desktop")(
       text("Device address").bold.length(1),
       input(urlInput, "airgradient.local or http://host:port").key("device-url").length(1),
       text("Refresh interval / seconds, 5–3600").length(1),
       input(refreshInput, "30").key("refresh-seconds").length(1),
-      text(s"Theme: ${themeName.get} / press t or use Preview theme").length(1),
+      text(s"Theme: ${themeName.get} / press t or choose below").length(1),
+      (if summon[Theme].glyphs == GlyphSupport.Ascii then
+         button("Next theme / t")(cycleTheme()).key("theme-picker").length(1)
+       else
+         DropdownElement(
+           Palettes.names,
+           Palettes.names.indexOf(themeName.get),
+           themeDropdown,
+           index => previewTheme(Palettes.names(index)),
+           maxVisibleRows = if size.height < 24 then 2 else 5
+         ).key("theme-picker")
+      ),
       row(button("Preview theme")(cycleTheme()).length(20), button("Save / Ctrl+s")(saveSettings()).length(22))
         .length(1),
-      text(if demo then "Demo changes remain in memory." else s"Config: ${store.path}").dim.length(1),
-      text("Tab moves focus. Esc returns. Session overrides are saved only here.").dim.length(1),
+      text(if demo then "Demo changes remain in memory." else s"Config: ${store.path}")
+        .styled(_ => summon[Theme].muted)
+        .length(1),
+      text("Tab moves focus. Esc returns.").styled(_ => summon[Theme].muted).length(1),
       spacer
     ).rounded
+    if size.width < 110 then form
+    else
+      row(
+        form.fill(3),
+        panel("YOUR WORKSPACE / make it yours")(
+          text(themeName.get).bold.styled(_ => summon[Theme].accent).length(1),
+          text("15 palettes / dark, light, high contrast").length(1),
+          rule().length(1),
+          text("Ctrl+p / search a theme by name").length(1),
+          text("t / preview the next palette").length(1),
+          text("Enter / open the theme chooser").length(1),
+          rule().length(1),
+          (if summon[Theme].glyphs == GlyphSupport.Ascii then
+             text(if demo then "Offline demo / no disk writes" else "Changes apply only when saved")
+           else notice(if demo then "Offline demo / no disk writes" else "Changes apply only when saved")).length(1),
+          text("Other desktop fields are preserved.").styled(_ => summon[Theme].muted).length(1),
+          text("Session overrides are saved only here.").styled(_ => summon[Theme].muted).length(1),
+          spacer
+        ).rounded.styled(_ => summon[Theme].surface).fill(2)
+      ).gap(1)

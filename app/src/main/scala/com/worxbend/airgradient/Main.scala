@@ -34,15 +34,15 @@ object Options:
     case option :: _                  => Left(s"unknown option or missing value: $option; use --help")
 
 object Main:
-  val Version      = "0.1.0"
-  val Help: String = """AirGradient TUI / Scala + Glyphora
+  val Version      = "0.2.0"
+  val Help: String = s"""AirGradient TUI / Scala + Glyphora
     |
     |Usage: airgradient-tui [--demo] [--url HOST] [OPTIONS]
     |
     |  --demo              Synthetic data; no network, config reads, or history writes
     |  --url HOST          LAN hostname or http(s)://host:port (session override)
     |  --refresh SECONDS   Poll every 5–3600 seconds (default: 30)
-    |  --theme NAME        aurora, nord, mono (session override)
+    |  --theme NAME        Theme name (session override; see list below)
     |  --once              Fetch once and print a measurement table
     |  --json              Fetch once and print normalized JSON; missing values are null
     |  --config PATH       Shared desktop config, or an isolated JSON file
@@ -51,7 +51,11 @@ object Main:
     |  --help              Show this help
     |  --version           Show version
     |
+    |Themes:
+    |  ${Palettes.names.grouped(5).map(_.mkString(", ")).mkString("\n    |  ")}
+    |
     |Dashboard: r refresh / h history / c settings / t theme / ? help / q quit
+    |Commands: Ctrl+p to search navigation, metrics, and themes
     |Settings: Tab next control / Ctrl+s save / Esc back
     |""".stripMargin
 

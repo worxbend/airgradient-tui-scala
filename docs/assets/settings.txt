@@ -1,30 +1,30 @@
- AIRGRADIENT                                                                                           DEMO / synthetic
+ AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
  [ Overview ]    [ History ]  [ [Settings] ]
 DEMO / updated 0s ago / every 30s / 61 samples
-╭SETTINGS / shared with AirGradient desktop────────────────────────────────────────────────────────────────────────────╮
-│Device address                                                                                                        │
-│airgradient.local or http://host:port                                                                                 │
-│Refresh interval / seconds, 5–3600                                                                                    │
-│30                                                                                                                    │
-│Theme: aurora / press t or use Preview theme                                                                          │
-│ [ Preview theme ]    [ Save / Ctrl+s ]                                                                               │
-│Demo changes remain in memory.                                                                                        │
-│Tab moves focus. Esc returns. Session overrides are saved only here.                                                  │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-│                                                                                                                      │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭SETTINGS / shared with AirGradient desktop───────────────────────────╮ ╭YOUR WORKSPACE / make it yours────────────────╮
+│Device address                                                       │ │aurora                                        │
+│airgradient.local or http://host:port                                │ │15 palettes / dark, light, high contrast      │
+│Refresh interval / seconds, 5–3600                                   │ │──────────────────────────────────────────────│
+│30                                                                   │ │Ctrl+p / search a theme by name               │
+│Theme: aurora / press t or choose below                              │ │t / preview the next palette                  │
+│▸ aurora                                                             │ │Enter / open the theme chooser                │
+│ [ Preview theme ]    [ Save / Ctrl+s ]                              │ │──────────────────────────────────────────────│
+│Demo changes remain in memory.                                       │ │• Offline demo / no disk writes               │
+│Tab moves focus. Esc returns.                                        │ │Other desktop fields are preserved.           │
+│                                                                     │ │Session overrides are saved only here.        │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+╰─────────────────────────────────────────────────────────────────────╯ ╰──────────────────────────────────────────────╯
 Demo settings are session-only; no configuration or history is written.

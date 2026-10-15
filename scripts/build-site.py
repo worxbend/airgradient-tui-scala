@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Stage the dependency-free microsite with the actual Glyphora captures."""
 import shutil
+import json
+from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
@@ -13,6 +15,16 @@ shutil.copytree(root / "site", output)
 (output / "assets").mkdir()
 for name in ("mark.svg", "dashboard.svg", "history.svg", "settings.svg"):
     shutil.copy2(root / "docs/assets" / name, output / "assets" / name)
+shutil.copytree(root / "docs/assets/themes", output / "assets/themes")
+themes = json.loads((root / "docs/assets/themes.json").read_text())
+options = "".join(
+    f'<option value="{escape(name, quote=True)}"{" selected" if name == "grafana" else ""}>{escape(name.title())}</option>'
+    for name in themes
+)
+index = output / "index.html"
+index.write_text(index.read_text().replace("<!-- THEME_OPTIONS -->", options))
+for name in themes:
+    assert (output / "assets/themes" / f"{name}.svg").is_file(), f"Missing theme preview: {name}"
 (output / ".nojekyll").touch()
 
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#192a34">
-  <meta name="description" content="Your air. Your terminal. A local AirGradient dashboard built with Scala and Glyphora. Live readings, history charts, three palettes, and an offline demo.">
+  <meta name="description" content="Your air. Your terminal. A local AirGradient dashboard built with Scala and Glyphora. Live readings, history charts, 15 themes, and an offline demo.">
   <meta property="og:title" content="AirGradient TUI — Fresh air. Terminal energy.">
   <meta property="og:description" content="A little more clarity for your air. A local, open-source terminal dashboard for AirGradient monitors.">
   <meta property="og:type" content="website">
@@ -64,10 +64,16 @@
       </div>
       <div class="feature-list">
         <article><span aria-hidden="true">↗</span><div><h3>The whole room, at a glance</h3><p>AQI, CO₂, particulates, TVOC and NOx indices, temperature, and humidity. Missing values stay missing. Stale values show their age.</p></div></article>
-        <article><span aria-hidden="true">⌁</span><div><h3>Go beyond the current reading</h3><p>Explore per-device history with real elapsed time and clear gaps for missed samples. Keep up to 2,000 successful samples locally.</p></div></article>
-        <article><span aria-hidden="true">◒</span><div><h3>Very much your terminal</h3><p>Aurora, Nord, or monochrome. Wide-screen cards or a compact table. Keyboard controls, mouse-friendly buttons, and words alongside status colors.</p></div></article>
+        <article><span aria-hidden="true">⌁</span><div><h3>Go beyond the current reading</h3><p>Braille time-series charts, sample means, peaks, and clear gaps for missed readings. Explore up to 2,000 successful samples locally, with every axis labeled.</p></div></article>
+        <article><span aria-hidden="true">◒</span><div><h3>Very much your terminal</h3><p>15 palettes, from Grafana-inspired dark to bright Paper and soft Mint. Wide-screen charts or a compact inventory. Search commands with Ctrl+P, choose themes by name, and keep every reading in view.</p></div></article>
         <article><span aria-hidden="true">⌂</span><div><h3>From your monitor to your machine</h3><p>Reads your AirGradient’s local API directly. Shares compatible desktop settings. No cloud account or API token needed.</p></div></article>
       </div>
+    </section>
+
+    <section class="theme-gallery wrap" aria-labelledby="themes-title">
+      <div class="gallery-heading"><div><h2 id="themes-title">Find your frequency.</h2><p>15 palettes. One dashboard. Every preview comes from the actual Glyphora renderer.</p></div><div class="theme-control"><label for="theme-picker">Preview a theme</label><select id="theme-picker"><!-- THEME_OPTIONS --></select></div></div>
+      <div class="gallery-frame"><img id="theme-preview" src="assets/themes/grafana.svg" width="1116" height="576" alt="Grafana theme: actual AirGradient dashboard with synthetic demo readings." loading="lazy"></div>
+      <p class="gallery-caption"><code id="theme-command">./airgradient-tui --demo --theme grafana</code><span>Press <kbd>t</kbd> in the app to cycle. Save in Settings to keep your choice.</span></p>
     </section>
 
     <section class="start-section" id="start" aria-labelledby="start-title">
@@ -101,7 +107,7 @@ cd airgradient-tui-scala
 
     <section class="controls wrap" aria-labelledby="controls-title">
       <div><h2 id="controls-title">Fewer clicks.<br>More fresh air.</h2><p>A few keys to feel right at home.</p><a class="text-link" href="https://github.com/worxbend/airgradient-tui-scala#-make-yourself-at-home">All controls & configuration <span aria-hidden="true">↗</span></a></div>
-      <dl class="key-list"><div><dt><kbd>r</kbd></dt><dd>Refresh now</dd></div><div><dt><kbd>h</kbd></dt><dd>Explore history</dd></div><div><dt><kbd>c</kbd></dt><dd>Open settings</dd></div><div><dt><kbd>t</kbd></dt><dd>Preview a theme</dd></div><div><dt><kbd>?</kbd></dt><dd>Keyboard guide</dd></div><div><dt><kbd>q</kbd></dt><dd>Quit outside text editing</dd></div></dl>
+      <dl class="key-list"><div><dt><kbd>r</kbd></dt><dd>Refresh now</dd></div><div><dt><kbd>h</kbd></dt><dd>Explore history</dd></div><div><dt><kbd>c</kbd></dt><dd>Open settings</dd></div><div><dt><kbd>t</kbd></dt><dd>Preview a theme</dd></div><div><dt><kbd>^p</kbd></dt><dd>Search commands & themes</dd></div><div><dt><kbd>q</kbd></dt><dd>Quit outside text editing</dd></div></dl>
     </section>
     <section class="oss-section wrap" aria-labelledby="oss-title">
       <img src="assets/mark.svg" width="64" height="64" alt="" loading="lazy">
