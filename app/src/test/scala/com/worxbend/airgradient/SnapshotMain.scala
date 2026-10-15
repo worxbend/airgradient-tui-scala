@@ -34,7 +34,12 @@ object SnapshotMain:
     )
     val backend = HeadlessBackend(Size(120, 30))
     Pilot.using(backend) { app.runWith(backend) } { pilot =>
-      pilot.waitUntil("synthetic connection failure")(app.problem.peek.nonEmpty)
+      pilot
+        .waitUntil("synthetic failure frame")(
+          pilot.screenText.contains(if retainedHistory then "STALE / Synthetic device offline"
+          else "OFFLINE / Synthetic device offline")
+        )
+        .waitForIdle()
       capture(if retainedHistory then "state-stale" else "state-offline", directory, backend, pilot, app.theme)
     }
 

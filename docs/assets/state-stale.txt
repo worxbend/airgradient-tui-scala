@@ -1,6 +1,6 @@
  AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
 [ [Overview] ]   [ History ]   [ Settings ]
-FETCHING / updated 90s ago
+STALE / Synthetic device offline / retry with r / updated 90s ago
 ╭AIR QUALITY / current AQI─────────────────────╮ ╭ROOM SIGNAL / available readings─────────────────────────────────────╮
 │24 US AQI                               [Good]│ │Moderate            10 / 10 available                                │
 │            current AQI / 0 to 500            │ │All readings available / local API / no cloud account.               │
