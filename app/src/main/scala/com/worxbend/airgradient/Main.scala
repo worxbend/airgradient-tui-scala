@@ -34,7 +34,7 @@ object Options:
     case option :: _                  => Left(s"unknown option or missing value: $option; use --help")
 
 object Main:
-  val Version      = "0.2.1"
+  val Version      = "0.2.2"
   val Help: String = s"""AirGradient TUI / Scala + Glyphora
     |
     |Usage: airgradient-tui [--demo] [--url HOST] [OPTIONS]

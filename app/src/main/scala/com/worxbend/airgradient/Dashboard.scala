@@ -188,7 +188,7 @@ final class Dashboard(
   def view(using ReactiveScope, Theme): Element =
     given palette: Theme = Palettes(themeName.get)
     val _                = clock.get
-    responsive { size =>
+    val screen           = responsive { size =>
       if size.width < 48 || size.height < 18 then
         panel("AirGradient")(text("Please resize to at least 48 x 18."), text("q: quit")).rounded
       else
@@ -240,6 +240,30 @@ final class Dashboard(
           )
         else shell
     }
+    if palette.name == "mono" then screen
+    else
+      // A root portal runs after ordinary painting, including Glyphora's command palette and toasts.
+      // Resolve terminal defaults in the actual frame while preserving explicit panel/focus colors and input routing.
+      // This ordinary render pass requires no extra animation ticks or terminal-wide color changes.
+      layers(
+        screen,
+        responsive { size =>
+          portal(0, 0, size.width, size.height)(
+            widget((area, buffer) =>
+              buffer.foreachIn(area) { (x, y, cell) =>
+                if !cell.style.bg.exists(_ != Color.Reset) || !cell.style.fg.exists(_ != Color.Reset) then
+                  val style = palette.primary.patch(
+                    cell.style.copy(
+                      fg = cell.style.fg.filterNot(_ == Color.Reset),
+                      bg = cell.style.bg.filterNot(_ == Color.Reset)
+                    )
+                  )
+                  buffer.set(x, y, cell.copy(style = style))
+              }
+            )
+          )
+        }
+      )
 
   private def footer(width: Int)(using ReactiveScope, Theme): Element =
     if message.get.nonEmpty then text(message.get).styled(_ => summon[Theme].muted)

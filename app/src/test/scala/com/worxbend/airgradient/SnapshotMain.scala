@@ -96,6 +96,10 @@ object SnapshotMain:
       y <- 0 until frame.area.height
       x <- 0 until frame.area.width
       cell = frame.get(x, y)
+      _    = require(
+        theme.name == "mono" || cell.style.bg.exists(_ != Color.Reset),
+        s"$name (${theme.name}) leaks the terminal background at ($x, $y)"
+      )
       if cell.symbol.nonEmpty
     yield
       val fg         = cell.style.fg.filterNot(_ == Color.Reset).fold(defaultForeground)(css)

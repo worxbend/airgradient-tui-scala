@@ -74,3 +74,57 @@ final class PalettesSpec extends AnyFunSuite:
       assert(store.load().toOption.get.settings.theme == name)
       assert(ujson.read(Files.readString(path))("future")("enabled").bool)
     }
+
+  test("every color theme paints the entire application, including overlays and terminal resizes"):
+    val app = Dashboard(
+      LoadedSettings(Settings(), "", Vector.empty),
+      ConfigStore(Files.createTempDirectory("ag-backgrounds").resolve("config.json")),
+      HistoryStore.Disabled,
+      DemoClient(),
+      demo = true,
+      initialHistory = Demo.history(1800000000000L)
+    )
+    val backend = HeadlessBackend(Size(120, 30))
+    Pilot.using(backend) { app.runWith(backend) } { pilot =>
+      pilot.waitUntil("demo frame")(pilot.screenText.contains("US AQI"))
+      def checkBackground(name: String, context: String): Unit =
+        val frame = backend.lastDrawn.get
+        val cells = for
+          y <- 0 until frame.area.height
+          x <- 0 until frame.area.width
+        yield (x, y, frame.get(x, y))
+        if name == "mono" then
+          assert(cells.exists(!_._3.style.bg.exists(_ != Color.Reset)), s"Mono must retain terminal defaults: $context")
+        else
+          val holes = cells.filterNot(_._3.style.bg.exists(_ != Color.Reset))
+          assert(holes.isEmpty, s"$name / $context: terminal background leaks at ${holes.take(8)}")
+          assert(cells.forall(_._3.style.fg.exists(_ != Color.Reset)), s"$name / $context: default text color")
+          assert(cells.exists(_._3.style.bg == Palettes(name).primary.bg), s"$name / $context: missing base color")
+      Palettes.names.foreach { name =>
+        checkBackground(name, "overview")
+        pilot.press("h").waitForIdle()
+        checkBackground(name, "history")
+        pilot.press("esc").press("?").waitForIdle()
+        checkBackground(name, "help")
+        pilot.press("esc").press("c").waitForIdle()
+        checkBackground(name, "settings")
+        if name != "mono" then
+          val lines = pilot.screenLines
+          val y     = lines.indexWhere(_.contains("▸"))
+          assert(y >= 0)
+          pilot.click(lines(y).indexOf(name), y).waitForIdle()
+          checkBackground(name, "theme chooser")
+          pilot.press("esc").waitForIdle()
+        pilot.press("ctrl+p").waitForIdle()
+        checkBackground(name, "empty command search")
+        pilot.typeText("paper").waitForIdle()
+        checkBackground(name, "filtered commands")
+        pilot.press("esc").press("esc").waitForIdle()
+        Vector(Size(160, 44), Size(60, 24), Size(48, 18), Size(30, 12), Size(120, 30)).foreach { size =>
+          pilot.resize(size.width, size.height).waitForIdle()
+          checkBackground(name, s"resize $size")
+        }
+        pilot.press("t").waitForIdle()
+      }
+      checkBackground(Palettes.names.head, "wrapped from last theme")
+    }

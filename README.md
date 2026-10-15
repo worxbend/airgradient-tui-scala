@@ -139,6 +139,8 @@ and Enter to select; Esc closes the chooser before leaving Settings.
 
 Preview all 15 themes in the **[interactive theme gallery](https://worxbend.github.io/airgradient-tui-scala/#themes-title)**.
 Every preview is captured from the actual Glyphora renderer with synthetic demo data.
+All color themes paint a solid background across the application, including charts and popups.
+`mono` keeps terminal-default backgrounds and high-contrast ASCII styling.
 
 | Theme | Look | Theme | Look |
 | --- | --- | --- | --- |
