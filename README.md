@@ -1,19 +1,59 @@
-# AirGradient TUI · Scala
+<div align="center">
 
-**Your air. Your terminal. Built with [Glyphora](https://github.com/worxbend/glyphora).**
+<img src="docs/assets/mark.svg" width="88" height="88" alt="AirGradient TUI airflow icon">
+
+# AirGradient TUI
+
+### Your air. Your terminal. A little more ✨ clarity.
+
+A local air-quality dashboard for people who live in the terminal.<br>
+Built with **Scala 3** + **[Glyphora](https://github.com/worxbend/glyphora)**. Powered by your AirGradient monitor.
 
 [![CI](https://github.com/worxbend/airgradient-tui-scala/actions/workflows/ci.yml/badge.svg)](https://github.com/worxbend/airgradient-tui-scala/actions/workflows/ci.yml)
-[![MIT](https://img.shields.io/badge/license-MIT-72e5b1)](LICENSE)
+[![Scala 3](https://img.shields.io/badge/Scala-3.9.0-e86778?style=flat-square&logo=scala&logoColor=white)](build.mill)
+[![Glyphora](https://img.shields.io/badge/Glyphora-0.18.3-b7a4f4?style=flat-square)](https://github.com/worxbend/glyphora)
+[![Linux amd64](https://img.shields.io/badge/Linux-amd64-92dfc5?style=flat-square&logo=linux&logoColor=18242b)](https://github.com/worxbend/airgradient-tui-scala/releases/latest)
+[![MIT](https://img.shields.io/badge/license-MIT-92dfc5?style=flat-square)](LICENSE)
 
-A standalone Scala 3 application for AirGradient monitors on your local network.
-Live measurements, history charts, shared desktop settings, and an offline demo.
-No cloud account, API token, or GitHub Packages credentials.
+**[🌐 Microsite](https://worxbend.github.io/airgradient-tui-scala/)** ·
+**[📦 Download](https://github.com/worxbend/airgradient-tui-scala/releases/latest)** ·
+**[🚀 Quick start](#-quick-start)** ·
+**[⌨️ Controls](#-make-yourself-at-home)** ·
+**[🛠️ Contribute](#-build--contribute)**
+
+<br>
 
 ![Actual Glyphora dashboard rendered with synthetic demo data](docs/assets/dashboard.svg)
 
-*Captured from the actual Glyphora cell buffer with synthetic data. These are not hardware readings.*
+<sub>Actual Glyphora renderer · Synthetic demo data · No hardware readings</sub>
 
-## Run
+<br><br>
+
+**📡 Direct to your monitor &nbsp; 🏡 Local history &nbsp; 🎨 Three palettes &nbsp; 🫧 Offline demo**
+
+No cloud account. No API token. No GitHub Packages credentials.
+
+</div>
+
+<br>
+
+## 🚀 Quick start
+
+### Download for Linux amd64
+
+Grab the native archive and `SHA256SUMS` from the **[latest release](https://github.com/worxbend/airgradient-tui-scala/releases/latest)**.
+In the download directory, verify the checksum, extract the archive, and try the offline demo:
+
+```sh
+sha256sum --check SHA256SUMS
+tar -xzf airgradient-tui-scala-*-linux-amd64.tar.gz
+./airgradient-tui --demo
+```
+
+Native releases target **Linux x86-64 / amd64** only and do not require Java.
+For other platforms, run from source with a JDK.
+
+### Run from source
 
 Install **JDK 25 or newer**, then:
 
@@ -48,7 +88,19 @@ The device is read directly at `/measures/current`, following the
 [AirGradient Local API](https://www.airgradient.com/documentation/kb/where-do-i-access-the-api-documentation-api-token-and-local-api).
 The dashboard needs an interactive terminal; `--once` and `--json` work in pipelines.
 
-## What it does
+## ✨ A clearer view of your air
+
+| | The good stuff |
+| :---: | --- |
+| 📡 | **Live readings** — AQI, CO₂, particulate measurements, TVOC/NOx indices, temperature, humidity. |
+| 📈 | **History with context** — elapsed-time charts, selectable metrics, and gaps for missed samples. |
+| 🎨 | **Your terminal, your palette** — Aurora, Nord, and monochrome, with responsive layouts. |
+| 🧭 | **Honest status** — stale readings show their age; missing readings stay visibly missing. |
+| 🏡 | **Local by default** — direct device requests, desktop-compatible settings, per-device history. |
+| 🫧 | **Try it offline** — deterministic demo; no network, config reads, or history writes. |
+
+<details>
+<summary><strong>A few thoughtful details</strong></summary>
 
 - Live AQI, CO2, particulate measurements, TVOC and NOx indices, temperature, and humidity.
 - Responsive cards on wide terminals, a compact table on smaller terminals, and explicit resize guidance below 48×18.
@@ -59,24 +111,44 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 - Session settings and an editor that merges changes into the shared desktop JSON.
 - A deterministic demo that performs no network requests, config reads, or history writes.
 
+</details>
+
+## ⌨️ Make yourself at home
+
 | Key | Action |
 | --- | --- |
-| r | Refresh now |
-| h | Switch overview / history |
-| j / k | Next / previous history metric |
-| c | Settings |
-| t | Preview the next theme |
-| Tab / Shift+Tab | Move between controls |
-| Ctrl+s | Save settings |
-| ? | Keyboard guide |
-| Esc | Close help, return to overview, or quit |
-| q | Quit (outside text editing) |
+| <kbd>r</kbd> | Refresh now |
+| <kbd>h</kbd> | Switch overview / history |
+| <kbd>j</kbd> / <kbd>k</kbd> | Next / previous history metric |
+| <kbd>c</kbd> | Settings |
+| <kbd>t</kbd> | Preview the next theme |
+| <kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> | Move between controls |
+| <kbd>Ctrl</kbd>+<kbd>s</kbd> | Save settings |
+| <kbd>?</kbd> | Keyboard guide |
+| <kbd>Esc</kbd> | Close help, return to overview, or quit |
+| <kbd>q</kbd> | Quit (outside text editing) |
 
 Buttons also support mouse activation. The theme preview is session-only until saved.
 
+<details>
+<summary><strong>📈 A peek at history</strong></summary>
+
 ![History view rendered with synthetic demo data](docs/assets/history.svg)
 
-## Local data
+Synthetic data captured from the actual Glyphora renderer.
+
+</details>
+
+<details>
+<summary><strong>⚙️ A peek at settings</strong></summary>
+
+![Settings view rendered with synthetic demo data](docs/assets/settings.svg)
+
+Synthetic demo configuration captured from the actual Glyphora renderer.
+
+</details>
+
+## 🏡 Your data stays local
 
 **Configuration:** `$XDG_CONFIG_HOME/airgradient-desktop/config.json`, falling back to
 `~/.config/airgradient-desktop/config.json`. Compatible keys are `server_url`,
@@ -110,7 +182,7 @@ Missing values are `--` in the UI and `null` in JSON. TVOC/NOx values are indice
 The displayed PM2.5-derived AQI is an estimate from the current sample, not a 24-hour exposure average.
 See [architecture and contracts](docs/architecture.md).
 
-## A real Glyphora consumer
+## 🧩 A real Glyphora consumer
 
 ```scala
 def mvnDeps = Seq(
@@ -127,7 +199,13 @@ The application demonstrates Glyphora signals, owned async task scopes, lifecycl
 responsive layouts, themed metric cards, gauges, sparklines, charts, inputs, buttons,
 keyboard bindings, notifications, and headless Pilot tests.
 
-## Build and verify
+## 🛠️ Build & contribute
+
+Bug reports, fixes, and ideas are welcome. [Open an issue](https://github.com/worxbend/airgradient-tui-scala/issues)
+with your platform, Java version, steps to reproduce, and a sanitized example when useful.
+Keep device addresses, serial numbers, credentials, and home readings out of contributions.
+For code changes, follow [AGENTS.md](AGENTS.md) and [architecture and contracts](docs/architecture.md),
+then run the relevant checks below before opening a pull request.
 
 Pins: Mill **1.1.9**, Scala **3.9.0**, Glyphora **0.18.3**, uJSON **4.4.3**,
 ScalaTest **3.2.20**, GraalVM CE **25.0.2**. Mill's build process defaults to Temurin 25.
@@ -156,7 +234,8 @@ CI runs the test suite and packaged JAR on JDK 25 and 26, checks published depen
 resolution and screenshot reproducibility, then builds and exercises a Linux amd64
 native executable. Runnable artifacts and SHA256 checksums are attached to successful CI runs.
 Native builds target GraalVM's compatibility CPU baseline rather than the builder's newer instruction set.
-Release tags matching `Main.Version` can publish the same validated artifacts through the release workflow.
+Release tags matching `Main.Version` publish the validated **Linux amd64 native archive and SHA256 checksums**.
+Every release uses a new tag; existing tags are never moved.
 
 The network tests use a local mock HTTP server. Terminal lifecycle tests use real
 pseudo-terminals and check that terminal settings are restored. Live AirGradient
@@ -168,7 +247,20 @@ Regenerate screenshots after intentional UI changes:
 python3 scripts/capture-snapshots.py
 ```
 
-## Credits
+### Microsite
+
+The [project microsite](https://worxbend.github.io/airgradient-tui-scala/) lives in [`site/`](site/).
+It uses plain HTML, CSS, and JavaScript; there is no frontend build step.
+Preview the same files that GitHub Pages deploys:
+
+```sh
+python3 scripts/build-site.py
+python3 -m http.server 8080 --directory dist/site
+```
+
+Changes to the site or renderer assets deploy from `main` through [the Pages workflow](.github/workflows/pages.yml).
+
+## 💚 Credits
 
 Device contracts and interaction references:
 [worxbend/airgradient-cli](https://github.com/worxbend/airgradient-cli).
@@ -176,4 +268,14 @@ The synthetic firmware fixtures are adapted from that MIT-licensed project.
 UI and testing: [Glyphora](https://github.com/worxbend/glyphora).
 JSON parsing: [uJSON](https://com-lihaoyi.github.io/upickle/).
 
-[MIT license](LICENSE). An independent community project; not an official AirGradient product.
+<div align="center">
+
+<br>
+
+**Made for a little more breathing room. 🫧**
+
+[MIT license](LICENSE) · [GitHub](https://github.com/worxbend/airgradient-tui-scala) · [Microsite](https://worxbend.github.io/airgradient-tui-scala/)
+
+<sub>An independent community project. Not an official AirGradient product.</sub>
+
+</div>

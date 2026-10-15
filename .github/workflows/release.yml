@@ -34,17 +34,33 @@ jobs:
           PY
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
+          name: airgradient-tui-linux-amd64
           path: artifacts
-      - name: Verify and combine validated artifacts
+      - name: Verify and stage the validated Linux amd64 archive
         run: |
-          (cd artifacts/airgradient-tui-jvm && sha256sum --check SHA256SUMS)
-          (cd artifacts/airgradient-tui-linux-amd64 && sha256sum --check SHA256SUMS)
+          (cd artifacts && sha256sum --check SHA256SUMS)
           mkdir -p release
-          cp artifacts/airgradient-tui-jvm/airgradient-tui.jar release/
-          cp artifacts/airgradient-tui-linux-amd64/*.tar.gz release/
-          (cd release && sha256sum airgradient-tui.jar *.tar.gz > SHA256SUMS)
+          cp artifacts/airgradient-tui-scala-*-linux-amd64.tar.gz release/
+          (cd release && sha256sum airgradient-tui-scala-*-linux-amd64.tar.gz > SHA256SUMS)
       - name: Publish release artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release/* --verify-tag --title "AirGradient TUI $RELEASE_TAG" --generate-notes
+        run: |
+          cat > release-notes.md <<'NOTES'
+          ## 🫧 Your air. Your terminal.
+
+          Native executable for **Linux amd64 / x86-64**. No Java installation required.
+          Download the archive and `SHA256SUMS` into the same directory, then:
+
+          ```sh
+          sha256sum --check SHA256SUMS
+          tar -xzf airgradient-tui-scala-*-linux-amd64.tar.gz
+          ./airgradient-tui --demo
+          ```
+
+          [Project microsite](https://worxbend.github.io/airgradient-tui-scala/) · [Documentation](https://github.com/worxbend/airgradient-tui-scala#readme)
+
+          Validated with synthetic readings, a local mock HTTP server, and real controlling pseudo-terminals. Live AirGradient hardware has not been tested for this application.
+          NOTES
+          gh release create "$RELEASE_TAG" release/* --verify-tag --title "AirGradient TUI $RELEASE_TAG" --notes-file release-notes.md --generate-notes
