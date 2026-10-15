@@ -80,7 +80,9 @@ private final class BoundedBody(limit: Int) extends HttpResponse.BodySubscriber[
     else
       chunks.asScala.foreach { buffer =>
         val chunk = new Array[Byte](buffer.remaining())
-        val _     = buffer.get(chunk)
+        // Avoid a wildcard pattern on ByteBuffer: Scala 3.9.0/JDK 26 loads removed internal subclasses.
+        // https://github.com/scala/scala3/issues/26940
+        buffer.get(chunk)
         bytes.write(chunk)
       }
       subscription.foreach(_.request(1))

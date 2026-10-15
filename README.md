@@ -163,7 +163,7 @@ hardware has not been tested for this application.
 Regenerate screenshots after intentional UI changes:
 
 ```sh
-./mill app.test.runMain com.worxbend.airgradient.SnapshotMain docs/assets
+python3 scripts/capture-snapshots.py
 ```
 
 ## Credits

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Regenerate deterministic screenshots and reject drift against the committed actual-renderer captures."""
-import subprocess
 import tempfile
 from pathlib import Path
+from snapshot_runner import ROOT, capture
 
-root = Path(__file__).resolve().parents[1]
+root = ROOT
 with tempfile.TemporaryDirectory(prefix="airgradient-preview-") as tmp:
-    subprocess.run([str(root / "mill"), "app.test.runMain", "com.worxbend.airgradient.SnapshotMain", tmp], cwd=root, check=True)
+    capture(tmp)
     for name in ("dashboard", "history", "settings"):
         for suffix in ("svg", "txt"):
             artifact = f"{name}.{suffix}"
