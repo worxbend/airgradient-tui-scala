@@ -34,7 +34,19 @@ env = dict(os.environ, TERM="xterm-256color", COLORTERM="truecolor", CLICOLOR_FO
 process = subprocess.Popen(command, stdin=slave, stdout=slave, stderr=slave,
                            preexec_fn=control_terminal, env=env, close_fds=True)
 transcript = bytearray()
-screen = pyte.Screen(120, 30)
+class Screen(pyte.Screen):
+    """Glyphora probes the terminal at startup (CSI ? 996 n, CSI ? u). pyte 0.8.2 passes private=True to handlers
+    that reject it, so ignore the private variants, as a terminal that does not support those queries would."""
+
+    def report_device_status(self, mode, **kwargs):
+        if not kwargs.get("private"):
+            super().report_device_status(mode)
+
+    def restore_cursor(self, **kwargs):
+        if not kwargs.get("private"):
+            super().restore_cursor()
+
+screen = Screen(120, 30)
 stream = pyte.Stream(screen)
 decoder = codecs.getincrementaldecoder("utf-8")("replace")
 

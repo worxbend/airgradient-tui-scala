@@ -11,7 +11,7 @@ Built with **Scala 3** + **[Glyphora](https://github.com/worxbend/glyphora)**. P
 
 [![CI](https://github.com/worxbend/airgradient-tui-scala/actions/workflows/ci.yml/badge.svg)](https://github.com/worxbend/airgradient-tui-scala/actions/workflows/ci.yml)
 [![Scala 3](https://img.shields.io/badge/Scala-3.9.0-e86778?style=flat-square&logo=scala&logoColor=white)](build.mill)
-[![Glyphora](https://img.shields.io/badge/Glyphora-0.18.3-b7a4f4?style=flat-square)](https://github.com/worxbend/glyphora)
+[![Glyphora](https://img.shields.io/badge/Glyphora-0.20.0-b7a4f4?style=flat-square)](https://github.com/worxbend/glyphora)
 [![Linux amd64](https://img.shields.io/badge/Linux-amd64-92dfc5?style=flat-square&logo=linux&logoColor=18242b)](https://github.com/worxbend/airgradient-tui-scala/releases/latest)
 [![MIT](https://img.shields.io/badge/license-MIT-92dfc5?style=flat-square)](LICENSE)
 
@@ -241,7 +241,7 @@ See [architecture and contracts](docs/architecture.md).
 
 ```scala
 def mvnDeps = Seq(
-  mvn"com.worxbend::tui-dsl:0.18.3",
+  mvn"com.worxbend::tui-dsl:0.20.0",
   mvn"com.lihaoyi::ujson:4.4.3",
 )
 ```
@@ -262,7 +262,7 @@ Keep device addresses, serial numbers, credentials, and home readings out of con
 For code changes, follow [AGENTS.md](AGENTS.md) and [architecture and contracts](docs/architecture.md),
 then run the relevant checks below before opening a pull request.
 
-Pins: Mill **1.1.9**, Scala **3.9.0**, Glyphora **0.18.3**, uJSON **4.4.3**,
+Pins: Mill **1.1.9**, Scala **3.9.0**, Glyphora **0.20.0**, uJSON **4.4.3**,
 ScalaTest **3.2.20**, GraalVM CE **25.0.2**. Mill's build process defaults to Temurin 25.
 
 ```sh

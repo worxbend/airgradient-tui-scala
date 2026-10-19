@@ -252,12 +252,10 @@ final class Dashboard(
             widget((area, buffer) =>
               buffer.foreachIn(area) { (x, y, cell) =>
                 if !cell.style.bg.exists(_ != Color.Reset) || !cell.style.fg.exists(_ != Color.Reset) then
-                  val style = palette.primary.patch(
-                    cell.style.copy(
-                      fg = cell.style.fg.filterNot(_ == Color.Reset),
-                      bg = cell.style.bg.filterNot(_ == Color.Reset)
-                    )
-                  )
+                  val withoutResetFg = if cell.style.fg.contains(Color.Reset) then cell.style.withoutFg else cell.style
+                  val explicit       =
+                    if withoutResetFg.bg.contains(Color.Reset) then withoutResetFg.withoutBg else withoutResetFg
+                  val style = palette.primary.patch(explicit)
                   buffer.set(x, y, cell.copy(style = style))
               }
             )

@@ -10,8 +10,8 @@ for target, expected in (("app.runClasspath", ARTIFACTS), ("app.test.runClasspat
     result = subprocess.run([str(ROOT / "mill"), "show", target], cwd=ROOT, check=True, stdout=subprocess.PIPE, text=True)
     paths = json.loads(result.stdout)
     glyphora = [entry for entry in paths if "/com/worxbend/tui-" in entry]
-    actual = {artifact for artifact in expected if any(f"/{artifact}/0.18.3/" in entry for entry in glyphora)}
+    actual = {artifact for artifact in expected if any(f"/{artifact}/0.20.0/" in entry for entry in glyphora)}
     assert actual == expected, (target, actual, expected)
     assert len(glyphora) == len(expected), (target, glyphora)
     assert all("/https/repo.maven.apache.org/maven2/" in entry for entry in glyphora), glyphora
-    print(f"{target}: {len(expected)} Glyphora 0.18.3 JARs resolved from public Maven Central")
+    print(f"{target}: {len(expected)} Glyphora 0.20.0 JARs resolved from public Maven Central")

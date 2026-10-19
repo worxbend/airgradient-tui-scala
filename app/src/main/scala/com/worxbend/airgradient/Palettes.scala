@@ -4,24 +4,22 @@ import io.worxbend.tui.dsl.*
 
 object Palettes:
   private def rgb(hex: Int): Color = Color.Rgb((hex >> 16) & 255, (hex >> 8) & 255, hex & 255)
-  private val aurora               = Theme.Dark.copy(
-    name = "aurora",
-    primary = Style.Default.withFg(rgb(0xdbe7ef)).withBg(rgb(0x0b1220)),
-    accent = Style.Default.withFg(rgb(0x5ad6ff)),
-    muted = Style.Default.withFg(rgb(0x8b9eb3)),
-    surface = Style.Default.withBg(rgb(0x131f30)).withFg(rgb(0xdbe7ef)),
-    border = Style.Default.withFg(rgb(0x41566e)),
-    success = Style.Default.withFg(rgb(0x72e5b1)),
-    warning = Style.Default.withFg(rgb(0xffd580)),
-    error = Style.Default.withFg(rgb(0xff859d))
-  )
-  private val nord = aurora.copy(
-    name = "nord",
-    primary = Style.Default.withFg(rgb(0xe5e9f0)).withBg(rgb(0x2e3440)),
-    accent = Style.Default.withFg(rgb(0x88c0d0)),
-    surface = Style.Default.withBg(rgb(0x3b4252)).withFg(rgb(0xe5e9f0)),
-    border = Style.Default.withFg(rgb(0x81a1c1))
-  )
+  private val aurora               = Theme.Dark
+    .withName("aurora")
+    .withPrimary(Style.Default.withFg(rgb(0xdbe7ef)).withBg(rgb(0x0b1220)))
+    .withAccent(Style.Default.withFg(rgb(0x5ad6ff)))
+    .withMuted(Style.Default.withFg(rgb(0x8b9eb3)))
+    .withSurface(Style.Default.withBg(rgb(0x131f30)).withFg(rgb(0xdbe7ef)))
+    .withBorder(Style.Default.withFg(rgb(0x41566e)))
+    .withSuccess(Style.Default.withFg(rgb(0x72e5b1)))
+    .withWarning(Style.Default.withFg(rgb(0xffd580)))
+    .withError(Style.Default.withFg(rgb(0xff859d)))
+  private val nord = aurora
+    .withName("nord")
+    .withPrimary(Style.Default.withFg(rgb(0xe5e9f0)).withBg(rgb(0x2e3440)))
+    .withAccent(Style.Default.withFg(rgb(0x88c0d0)))
+    .withSurface(Style.Default.withBg(rgb(0x3b4252)).withFg(rgb(0xe5e9f0)))
+    .withBorder(Style.Default.withFg(rgb(0x81a1c1)))
   private def palette(
       name: String,
       light: Boolean,
@@ -38,24 +36,23 @@ object Palettes:
     val accentStyle  = Style.Default.withFg(rgb(accent))
     val mutedStyle   = Style.Default.withFg(rgb(muted))
     val surfaceStyle = Style.Default.withFg(rgb(foreground)).withBg(rgb(surface))
-    (if light then Theme.Light else Theme.Dark).copy(
-      name = name,
-      primary = Style.Default.withFg(rgb(foreground)).withBg(rgb(background)),
-      surface = surfaceStyle,
-      accent = accentStyle,
-      muted = mutedStyle,
-      border = Style.Default.withFg(rgb(border)),
-      success = Style.Default.withFg(rgb(success)),
-      warning = Style.Default.withFg(rgb(warning)),
-      error = Style.Default.withFg(rgb(error)),
-      focus = Style.Default.withFg(rgb(background)).withBg(rgb(accent)).bold,
-      loading = LoadingTheme.from(accentStyle, mutedStyle, surfaceStyle)
-    )
+    (if light then Theme.Light else Theme.Dark)
+      .withName(name)
+      .withPrimary(Style.Default.withFg(rgb(foreground)).withBg(rgb(background)))
+      .withSurface(surfaceStyle)
+      .withAccent(accentStyle)
+      .withMuted(mutedStyle)
+      .withBorder(Style.Default.withFg(rgb(border)))
+      .withSuccess(Style.Default.withFg(rgb(success)))
+      .withWarning(Style.Default.withFg(rgb(warning)))
+      .withError(Style.Default.withFg(rgb(error)))
+      .withFocus(Style.Default.withFg(rgb(background)).withBg(rgb(accent)).bold)
+      .withLoading(LoadingTheme.from(accentStyle, mutedStyle, surfaceStyle))
 
   private val themes = Vector(
     aurora,
     nord,
-    Theme.HighContrast.copy(name = "mono", glyphs = GlyphSupport.Ascii),
+    Theme.HighContrast.withName("mono").withGlyphs(GlyphSupport.Ascii),
     palette(
       name = "grafana",
       light = false,
