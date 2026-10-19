@@ -15,9 +15,9 @@ DEMO / updated 0s ago / every 30s / 61 samples
 ││ grafana                                                           ││ │                                              │
 ││ ocean                                                             ││ │                                              │
 │╰───────────────────────────────────────────────────────────────────╯│ │                                              │
-│ [ Preview theme ]    [ Save / Ctrl+s ]                              │ │                                              │
-│Demo changes remain in memory.                                       │ │                                              │
-│Tab moves focus. Esc returns.                                        │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
+│                                                                     │ │                                              │
 │                                                                     │ │                                              │
 │                                                                     │ │                                              │
 │                                                                     │ │                                              │

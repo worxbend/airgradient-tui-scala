@@ -10,11 +10,11 @@ object app extends SbtModule with ScalafmtModule {
   def scalaVersion = "3.9.0"
   def scalacOptions = Seq("-deprecation", "-feature", "-unchecked", "-Wunused:all", "-Werror", "-release:25")
   def repositories = Seq("https://repo.maven.apache.org/maven2")
-  def mvnDeps = Seq(mvn"com.worxbend::tui-dsl:0.18.3", mvn"com.lihaoyi::ujson:4.4.3")
+  def mvnDeps = Seq(mvn"com.worxbend::tui-dsl:0.20.0", mvn"com.lihaoyi::ujson:4.4.3")
   def mainClass = Some("com.worxbend.airgradient.Main")
 
   object test extends SbtTests with TestModule.ScalaTest with ScalafmtModule {
-    def mvnDeps = Seq(mvn"com.worxbend::tui-test:0.18.3", mvn"org.scalatest::scalatest:3.2.20")
+    def mvnDeps = Seq(mvn"com.worxbend::tui-test:0.20.0", mvn"org.scalatest::scalatest:3.2.20")
     def forkArgs = Seq("--add-modules=jdk.httpserver")
     def testForkGrouping = discoveredTestClasses().map(Seq(_))
   }

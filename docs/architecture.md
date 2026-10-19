@@ -1,7 +1,7 @@
 # Architecture and contracts
 
 This is an application built against Glyphora's published API. The build consumes
-`com.worxbend::tui-dsl:0.18.3` and a test-only `tui-test` from Maven Central.
+`com.worxbend::tui-dsl:0.20.0` and a test-only `tui-test` from Maven Central.
 
 ```mermaid
 flowchart LR
