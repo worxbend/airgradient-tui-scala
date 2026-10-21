@@ -1,5 +1,5 @@
  AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
- [ Overview ]    [ History ]  [ [Settings] ]
+ [ Overview ]    [ History ]  [ › Settings ]
 DEMO / updated 0s ago / every 30s / 61 samples
 ╭SETTINGS / shared with AirGradient desktop───────────────────────────╮ ╭YOUR WORKSPACE / make it yours────────────────╮
 │Device address                                                       │ │aurora                                        │
