@@ -196,7 +196,8 @@ final class Dashboard(
           case Page.Overview => overview(size)
           case Page.History  => historyPage(size)
           case Page.Settings => settingsPage(size)
-        val shell = column(
+        val activeMark = if palette.glyphs == GlyphSupport.Ascii then ">" else "›"
+        val shell      = column(
           row(
             text(" AIRGRADIENT").bold.styled(_ => palette.accent).length(15),
             text(if size.width >= 100 then "air quality / local observatory" else "air quality")
@@ -211,9 +212,9 @@ final class Dashboard(
           ).styled(_ => palette.surface).length(1),
           row(
             Page.values.map(p =>
-              button(if page.get == p then s"[${p.toString}]" else p.toString) {
+              button(if page.get == p then s"$activeMark $p" else p.toString) {
                 if p == Page.Settings then openSettings() else page.set(p)
-              }.length(15)
+              }.length(15).styled(_ => if page.get == p then palette.accent.bold else palette.primary)
             )*
           ).length(1),
           connectionLine.length(1),
@@ -263,12 +264,32 @@ final class Dashboard(
         }
       )
 
+  private def keyHints(gap: Int, hints: (String, String)*)(using Theme): Element =
+    row(
+      hints.map((key, label) =>
+        row(
+          text(key).bold.styled(_ => summon[Theme].accent).length(key.length),
+          text(s" $label").styled(_ => summon[Theme].muted).length(label.length + 1)
+        ).length(key.length + label.length + 1)
+      )*
+    ).gap(gap)
+
   private def footer(width: Int)(using ReactiveScope, Theme): Element =
     if message.get.nonEmpty then text(message.get).styled(_ => summon[Theme].muted)
-    else if width < 75 then text("r refresh  h history  c settings  ? help  q quit").styled(_ => summon[Theme].muted)
+    else if width < 75 then
+      keyHints(2, "r" -> "refresh", "h" -> "history", "c" -> "settings", "?" -> "help", "q" -> "quit")
     else
       row(
-        text("r refresh   h history   c settings   t theme   ^p commands   ? help   q quit").fill,
+        keyHints(
+          3,
+          "r"  -> "refresh",
+          "h"  -> "history",
+          "c"  -> "settings",
+          "t"  -> "theme",
+          "^p" -> "commands",
+          "?"  -> "help",
+          "q"  -> "quit"
+        ).fill,
         text(themeName.get).styled(_ => summon[Theme].accent).length(12)
       )
 
@@ -283,10 +304,15 @@ final class Dashboard(
         )
       case None if fetching.get => text(s"FETCHING / $age").styled(_ => summon[Theme].accent)
       case None                 =>
-        text(
-          s"${if demo then "DEMO" else "LIVE"} / $age / every ${settings.get.refreshSeconds}s / ${history.get.size} samples"
+        val state = if demo then "DEMO" else "LIVE"
+        row(
+          text(state).bold
+            .styled(_ => if demo then summon[Theme].accent else summon[Theme].success)
+            .length(state.length),
+          text(s" / $age / every ${settings.get.refreshSeconds}s / ${history.get.size} samples")
+            .styled(_ => summon[Theme].muted)
+            .fill
         )
-          .styled(_ => summon[Theme].muted)
 
   private def overview(size: Size)(using ReactiveScope, Theme): Element =
     history.get.lastOption match
@@ -378,7 +404,7 @@ final class Dashboard(
         )
       ).length(9)
     panel("REPORTING / recent samples")(
-      row(labels.length(14), matrix.fill).length(9),
+      row(labels.length(15), matrix.fill).length(9),
       text("Each column is a sample.").styled(_ => summon[Theme].muted).length(1),
       text(if summon[Theme].glyphs == GlyphSupport.Ascii then "# = available" else "Filled = available")
         .styled(_ => summon[Theme].muted)
@@ -577,6 +603,7 @@ final class Dashboard(
             if summon[Theme].glyphs == GlyphSupport.Ascii then CanvasResolution.Cell else CanvasResolution.Braille,
           showLabels = true,
           xLabels = Seq("0 min", s"${math.round(analysis.minutes)} min"),
+          yLabels = Seq(metric.format(Some(low)), metric.format(Some(maximum + padding))),
           showLegend = false
         )
       )

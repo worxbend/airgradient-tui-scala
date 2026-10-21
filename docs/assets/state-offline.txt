@@ -1,5 +1,5 @@
  AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
-[ [Overview] ]   [ History ]   [ Settings ]
+[ › Overview ]   [ History ]   [ Settings ]
 OFFLINE / Synthetic device offline / retry with r / no reading yet
 ╭YOUR ROOM / ready when you are────────────────────────────────────────────────────────────────────────────────────────╮
 │                                                                                                                      │
