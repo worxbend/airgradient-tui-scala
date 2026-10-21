@@ -1,0 +1,6 @@
+{
+  "ignoredFiles": [
+    "docs/assets/*",
+    "docs/assets/themes/*"
+  ]
+}
