@@ -2,7 +2,9 @@ package com.worxbend.airgradient
 
 import java.util.Locale
 
-/** Derived indoor metrics. These are standard approximations from temperature and relative humidity, not sensor readings. */
+/** Derived indoor metrics. These are standard approximations from temperature and relative humidity, not sensor
+  * readings.
+  */
 object Comfort:
   private def fmt(n: Double, decimals: Int = 1): String = String.format(Locale.ROOT, s"%.${decimals}f", n)
 
@@ -71,7 +73,8 @@ object Comfort:
   /** CO2 change per hour across the last 30 minutes of successful samples. */
   def co2PerHour(samples: Vector[Sample]): Option[Double] =
     samples.lastOption.flatMap { last =>
-      val window = samples.filter(s => last.atMillis - s.atMillis <= 30 * 60000L && s.snapshot.value(Metric.Co2).nonEmpty)
+      val window =
+        samples.filter(s => last.atMillis - s.atMillis <= 30 * 60000L && s.snapshot.value(Metric.Co2).nonEmpty)
       for
         first <- window.headOption
         end   <- window.lastOption
@@ -94,7 +97,8 @@ object Advice:
 
   def ventilation(indoor: Option[Snapshot], outdoor: Option[OutdoorReport]): Advice =
     indoor match
-      case None           => Advice("Waiting for indoor readings", "Advice starts after the first successful sample.", Band.Unknown)
+      case None =>
+        Advice("Waiting for indoor readings", "Advice starts after the first successful sample.", Band.Unknown)
       case Some(snapshot) =>
         val co2         = snapshot.value(Metric.Co2)
         val indoorPm    = snapshot.value(Metric.Pm25)

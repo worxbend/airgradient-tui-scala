@@ -54,7 +54,9 @@ final class OutdoorSpec extends AnyFunSuite:
     assert(partial.value(OutdoorMetric.UsAqi).isEmpty)
     assert(partial.warnings == Vector("air quality unavailable: HTTP 503"))
     assert(OpenMeteo.combine(place, 1000, Left("HTTP 500"), Left("HTTP 500")) == Left("HTTP 500"))
-    assert(OpenMeteo.parseAir("""{"error":true,"reason":"Parameter is invalid"}""").left.toOption.get.contains("invalid"))
+    assert(
+      OpenMeteo.parseAir("""{"error":true,"reason":"Parameter is invalid"}""").left.toOption.get.contains("invalid")
+    )
     assert(OpenMeteo.parseWeather("not json").isLeft)
 
   test("geocoding takes the first match and reports an unknown place in words"):
@@ -74,8 +76,8 @@ final class OutdoorSpec extends AnyFunSuite:
     assert(OutdoorMetric.UsAqi.classify(None).contains(Band.Unknown))
 
   test("the Open-Meteo client sends only coordinates and requested fields, and survives a failing endpoint"):
-    val queries = ConcurrentLinkedQueue[String]()
-    val server  = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+    val queries                                              = ConcurrentLinkedQueue[String]()
+    val server                                               = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     def serve(path: String, status: Int, body: String): Unit =
       server.createContext(
         path,

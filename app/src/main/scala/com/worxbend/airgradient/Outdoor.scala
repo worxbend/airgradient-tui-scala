@@ -33,7 +33,14 @@ object Location:
     case _ => None
 
 /** Open-Meteo variables shown on the outdoor pages. Units follow the app's ASCII conventions. */
-enum OutdoorMetric(val key: String, val label: String, val unit: String, val decimals: Int, val min: Double, val max: Double):
+enum OutdoorMetric(
+    val key: String,
+    val label: String,
+    val unit: String,
+    val decimals: Int,
+    val min: Double,
+    val max: Double
+):
   case Temperature   extends OutdoorMetric("temperature_2m", "Temperature", "C", 1, -90, 60)
   case FeelsLike     extends OutdoorMetric("apparent_temperature", "Feels like", "C", 1, -100, 70)
   case Humidity      extends OutdoorMetric("relative_humidity_2m", "Humidity", "%", 0, 0, 100)
@@ -71,8 +78,9 @@ enum OutdoorMetric(val key: String, val label: String, val unit: String, val dec
       case _     => None
 
 object OutdoorMetric:
-  val weather: Vector[OutdoorMetric] = Vector(Temperature, FeelsLike, Humidity, Wind, Gusts, Pressure, Clouds, Precipitation)
-  val air: Vector[OutdoorMetric]     = Vector(UsAqi, EuAqi, Pm25, Pm10, No2, O3, So2, Co, Uv)
+  val weather: Vector[OutdoorMetric] =
+    Vector(Temperature, FeelsLike, Humidity, Wind, Gusts, Pressure, Clouds, Precipitation)
+  val air: Vector[OutdoorMetric] = Vector(UsAqi, EuAqi, Pm25, Pm10, No2, O3, So2, Co, Uv)
 
 /** One forecast hour. Times are wall-clock labels in the location's own time zone, never the machine's. */
 final case class ForecastHour(
@@ -103,30 +111,31 @@ final case class OutdoorReport(
 object Weather:
   /** WMO weather interpretation codes as documented by Open-Meteo. */
   def describe(code: Int): String = code match
-    case 0           => "Clear sky"
-    case 1           => "Mainly clear"
-    case 2           => "Partly cloudy"
-    case 3           => "Overcast"
-    case 45 | 48     => "Fog"
-    case 51 | 53     => "Drizzle"
-    case 55          => "Dense drizzle"
-    case 56 | 57     => "Freezing drizzle"
-    case 61          => "Light rain"
-    case 63          => "Rain"
-    case 65          => "Heavy rain"
-    case 66 | 67     => "Freezing rain"
-    case 71          => "Light snow"
-    case 73          => "Snow"
-    case 75          => "Heavy snow"
-    case 77          => "Snow grains"
-    case 80 | 81     => "Rain showers"
-    case 82          => "Violent rain showers"
-    case 85 | 86     => "Snow showers"
-    case 95          => "Thunderstorm"
-    case 96 | 99     => "Thunderstorm with hail"
-    case _           => s"Weather code $code"
+    case 0       => "Clear sky"
+    case 1       => "Mainly clear"
+    case 2       => "Partly cloudy"
+    case 3       => "Overcast"
+    case 45 | 48 => "Fog"
+    case 51 | 53 => "Drizzle"
+    case 55      => "Dense drizzle"
+    case 56 | 57 => "Freezing drizzle"
+    case 61      => "Light rain"
+    case 63      => "Rain"
+    case 65      => "Heavy rain"
+    case 66 | 67 => "Freezing rain"
+    case 71      => "Light snow"
+    case 73      => "Snow"
+    case 75      => "Heavy snow"
+    case 77      => "Snow grains"
+    case 80 | 81 => "Rain showers"
+    case 82      => "Violent rain showers"
+    case 85 | 86 => "Snow showers"
+    case 95      => "Thunderstorm"
+    case 96 | 99 => "Thunderstorm with hail"
+    case _       => s"Weather code $code"
 
-  private val points = Vector("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+  private val points =
+    Vector("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
   def compass(degrees: Double): String = points(math.floorMod(math.round(degrees / 22.5).toInt, 16))
 
 object OpenMeteo:
@@ -144,13 +153,18 @@ object OpenMeteo:
       case _              => None
 
   private def series(root: ujson.Value, key: String): Vector[Option[Double]] =
-    objectAt(root, "hourly").flatMap(_.get(key)).collect { case arr: ujson.Arr => arr.value.map(number).toVector }
+    objectAt(root, "hourly")
+      .flatMap(_.get(key))
+      .collect { case arr: ujson.Arr => arr.value.map(number).toVector }
       .getOrElse(Vector.empty)
 
   private def times(root: ujson.Value): Vector[String] =
-    objectAt(root, "hourly").flatMap(_.get("time")).collect { case arr: ujson.Arr =>
-      arr.value.collect { case ujson.Str(s) => s }.toVector
-    }.getOrElse(Vector.empty)
+    objectAt(root, "hourly")
+      .flatMap(_.get("time"))
+      .collect { case arr: ujson.Arr =>
+        arr.value.collect { case ujson.Str(s) => s }.toVector
+      }
+      .getOrElse(Vector.empty)
 
   private def read(body: String): Either[String, ujson.Value] =
     try
@@ -225,13 +239,20 @@ object OpenMeteo:
             w.flatMap(_.weatherCode),
             w.flatMap(_.windDirection),
             hours.take(24),
-            Vector(weather.left.toOption.map(e => s"weather unavailable: $e"), air.left.toOption.map(e => s"air quality unavailable: $e")).flatten
+            Vector(
+              weather.left.toOption.map(e => s"weather unavailable: $e"),
+              air.left.toOption.map(e => s"air quality unavailable: $e")
+            ).flatten
           )
         )
 
   def parseGeocoding(body: String, query: String): Either[String, Location] =
     read(body).flatMap { root =>
-      root.obj.get("results").collect { case arr: ujson.Arr => arr.value.toVector }.getOrElse(Vector.empty).headOption match
+      root.obj
+        .get("results")
+        .collect { case arr: ujson.Arr => arr.value.toVector }
+        .getOrElse(Vector.empty)
+        .headOption match
         case Some(first: ujson.Obj) =>
           val fields  = first.value
           val name    = fields.get("name").collect { case ujson.Str(s) => s }.getOrElse(query.trim)
@@ -250,7 +271,9 @@ trait OutdoorClient extends AutoCloseable:
   def cancelPending(): Unit  = ()
   override def close(): Unit = ()
 
-/** Free Open-Meteo endpoints: no account or key. Requests are bounded by the same deadline and size rules as the device. */
+/** Free Open-Meteo endpoints: no account or key. Requests are bounded by the same deadline and size rules as the
+  * device.
+  */
 final class OpenMeteoClient(
     forecastBase: URI = URI("https://api.open-meteo.com/"),
     airBase: URI = URI("https://air-quality-api.open-meteo.com/"),
@@ -258,7 +281,7 @@ final class OpenMeteoClient(
     timeout: Duration = Duration.ofSeconds(8),
     maxBytes: Int = 512 * 1024
 ) extends OutdoorClient:
-  private val http    = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build()
+  private val http = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build()
   private val pending = new AtomicReference[Vector[CompletableFuture[?]]](Vector.empty)
 
   private def query(location: Location, current: Vector[String], hourly: Vector[String]): String =
@@ -300,7 +323,11 @@ final class OpenMeteoClient(
   def report(location: Location, receivedAt: Long): Either[String, OutdoorReport] =
     val weather = get(
       forecastBase.resolve(
-        "v1/forecast?" + query(location, OpenMeteo.weatherCurrent, Vector("temperature_2m", "precipitation_probability"))
+        "v1/forecast?" + query(
+          location,
+          OpenMeteo.weatherCurrent,
+          Vector("temperature_2m", "precipitation_probability")
+        )
       )
     ).flatMap(OpenMeteo.parseWeather)
     val air = get(

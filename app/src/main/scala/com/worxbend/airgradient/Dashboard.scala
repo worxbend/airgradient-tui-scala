@@ -30,18 +30,18 @@ final class Dashboard(
   private val themeName               = Signal(
     if Palettes.names.contains(initial.settings.theme) then initial.settings.theme else "aurora"
   )
-  private val analytics                   = Computed(Telemetry.analyze(history.get, settings.get.refreshSeconds))
-  private val themeDropdown               = DropdownState()
-  private val clock                       = Signal(now())
-  private val selectedMetric              = Signal(1)
-  private val help                        = Signal(false)
-  private val message                     = Signal(initial.warnings.headOption.getOrElse(""))
-  private val urlInput                    = TextInputState(initial.settings.serverUrl)
-  private val refreshInput                = TextInputState(initial.settings.refreshSeconds.toString)
-  private var loaded                      = initial
-  private var lifetime: Option[TaskScope] = None
-  private var polling: Option[TaskScope]  = None
-  private var generation                  = 0
+  private val analytics                       = Computed(Telemetry.analyze(history.get, settings.get.refreshSeconds))
+  private val themeDropdown                   = DropdownState()
+  private val clock                           = Signal(now())
+  private val selectedMetric                  = Signal(1)
+  private val help                            = Signal(false)
+  private val message                         = Signal(initial.warnings.headOption.getOrElse(""))
+  private val urlInput                        = TextInputState(initial.settings.serverUrl)
+  private val refreshInput                    = TextInputState(initial.settings.refreshSeconds.toString)
+  private var loaded                          = initial
+  private var lifetime: Option[TaskScope]     = None
+  private var polling: Option[TaskScope]      = None
+  private var generation                      = 0
   val outdoor: Signal[Option[OutdoorReport]]  = Signal(None)
   val outdoorProblem: Signal[Option[String]]  = Signal(None)
   private val outdoorFetching                 = Signal(false)
@@ -150,7 +150,7 @@ final class Dashboard(
       case _ => ()
 
   private def go(target: Page): Unit = if target == Page.Settings then openSettings() else page.set(target)
-  private def step(delta: Int): Unit  =
+  private def step(delta: Int): Unit =
     go(Page.values(math.floorMod(page.peek.ordinal + delta, Page.values.length)))
 
   private def outdoorPlace(current: Settings): Option[Location] =
@@ -812,6 +812,7 @@ final class Dashboard(
       ).gap(1)
 
   private def fixed(n: Double, decimals: Int): String = String.format(Locale.ROOT, s"%.${decimals}f", n)
+
   /** A change that rounds to zero shows as an unsigned zero, never +0 or -0.0. */
   private def signed(n: Double, decimals: Int): String =
     val shown = fixed(n, decimals)
@@ -827,7 +828,7 @@ final class Dashboard(
       Theme
   ): Element =
     band match
-      case None    => row(text(label).styled(_ => summon[Theme].muted).length(labelWidth), text(value).bold.fill).length(1)
+      case None => row(text(label).styled(_ => summon[Theme].muted).length(labelWidth), text(value).bold.fill).length(1)
       case Some(b) =>
         row(
           text(label).styled(_ => summon[Theme].muted).length(labelWidth),
@@ -847,24 +848,28 @@ final class Dashboard(
       (if outdoorFetching.get then spinner(s"Fetching outdoor weather and air for ${place.fold("")(_.name)}...")
        else
          text(
-           outdoorProblem.get.fold(if place.isEmpty then "Outdoor data is off." else "Waiting for outdoor data.")(error =>
-             s"Outdoor data unavailable: $error"
+           outdoorProblem.get.fold(if place.isEmpty then "Outdoor data is off." else "Waiting for outdoor data.")(
+             error => s"Outdoor data unavailable: $error"
            )
-         ).bold).length(1),
+         ).bold
+      ).length(1),
       text("Add a city or lat,lon in Settings (c), or start with --location.")
         .styled(_ => summon[Theme].muted)
         .length(1),
       text("Open-Meteo is free and needs no account; only those coordinates are sent.")
         .styled(_ => summon[Theme].muted)
         .length(1),
-      row(button("Open settings")(openSettings()).length(20), button("Retry / r")(refreshOutdoor(force = true)).length(14))
+      row(
+        button("Open settings")(openSettings()).length(20),
+        button("Retry / r")(refreshOutdoor(force = true)).length(14)
+      )
         .length(1),
       spacer
     ).rounded.styled(_ => summon[Theme].surface)
 
   private def outdoorStatus(report: OutdoorReport)(using ReactiveScope, Theme): Element =
     val observed = report.observedAt.map(time => s" / model time ${ForecastHour(time, None, None, None, None).label}")
-    val line     = s"${report.location.name}${observed.getOrElse("")} / updated ${ago(clock.get - report.receivedAt)} ago"
+    val line = s"${report.location.name}${observed.getOrElse("")} / updated ${ago(clock.get - report.receivedAt)} ago"
     outdoorProblem.get match
       case Some(error) => text(s"STALE / $error / $line").styled(_ => summon[Theme].error)
       case None        =>
@@ -877,9 +882,9 @@ final class Dashboard(
     ).styled(_ => summon[Theme].muted)
 
   private def comparison(report: OutdoorReport)(using ReactiveScope, Theme): Element =
-    val indoor = history.get.lastOption.map(_.snapshot)
-    def in(metric: Metric)            = indoor.flatMap(_.value(metric))
-    def out(metric: OutdoorMetric)    = report.value(metric)
+    val indoor                                          = history.get.lastOption.map(_.snapshot)
+    def in(metric: Metric)                              = indoor.flatMap(_.value(metric))
+    def out(metric: OutdoorMetric)                      = report.value(metric)
     def absolute(t: Option[Double], rh: Option[Double]) =
       for a <- t; b <- rh; n <- Comfort.absoluteHumidity(a, b) yield n
     def line(label: String, a: Option[Double], b: Option[Double], decimals: Int, unit: String) =
@@ -1011,17 +1016,20 @@ final class Dashboard(
       case Some(report) =>
         val hours = report.hourly
         val best  = Advice.bestHour(hours) match
-          case None       => text("No hourly air-quality forecast to pick a time from.").styled(_ => summon[Theme].muted)
+          case None => text("No hourly air-quality forecast to pick a time from.").styled(_ => summon[Theme].muted)
           case Some(hour) =>
-            val detail = s" / US AQI ${hour.usAqi.fold("--")(fixed(_, 0))} / ${hour.temperature.fold("--")(fixed(_, 1))} C"
+            val detail =
+              s" / US AQI ${hour.usAqi.fold("--")(fixed(_, 0))} / ${hour.temperature.fold("--")(fixed(_, 1))} C"
             row(
               text("Best time to air out: ").styled(_ => summon[Theme].muted).length(22),
               text(hour.label).bold.styled(_ => summon[Theme].accent).length(hour.label.length),
               text(detail).styled(_ => summon[Theme].muted).fill
             )
-        val rain = hours.filter(_.precipitationProbability.nonEmpty).maxByOption(_.precipitationProbability.get)
+        val rain     = hours.filter(_.precipitationProbability.nonEmpty).maxByOption(_.precipitationProbability.get)
         val rainLine = text(
-          rain.fold("Rain chance unavailable")(h => s"Highest rain chance: ${fixed(h.precipitationProbability.get, 0)}% at ${h.label}")
+          rain.fold("Rain chance unavailable")(h =>
+            s"Highest rain chance: ${fixed(h.precipitationProbability.get, 0)}% at ${h.label}"
+          )
         ).styled(_ => summon[Theme].muted)
         val temperature = panel("TEMPERATURE / next 24 h (C)")(
           forecastChart(hours, hours.map(_.temperature), 1, Palettes.seriesStyle(Metric.Temperature), false).fill
@@ -1121,9 +1129,13 @@ final class Dashboard(
         val advice      = Advice.ventilation(Some(snapshot), outdoor.get)
         def word(verdict: Comfort.Verdict) = text(verdict.label).bold.styled(_ => Palettes.bandStyle(verdict.band))
         def note(verdict: Comfort.Verdict) = text(verdict.detail).styled(_ => summon[Theme].muted)
-        val co2         = snapshot.value(Metric.Co2)
-        val thermal     = Vector(
-          reading("Temperature", s"${Metric.Temperature.format(temperature)} C", Some(Metric.Temperature.classify(temperature))),
+        val co2                            = snapshot.value(Metric.Co2)
+        val thermal                        = Vector(
+          reading(
+            "Temperature",
+            s"${Metric.Temperature.format(temperature)} C",
+            Some(Metric.Temperature.classify(temperature))
+          ),
           reading("Humidity", s"${Metric.Humidity.format(humidity)} %", Some(Metric.Humidity.classify(humidity))),
           reading("Dew point", dew.fold("--")(d => s"${fixed(d, 1)} C")),
           reading("Water vapour", absolute.fold("--")(a => s"${fixed(a, 1)} g/m3")),

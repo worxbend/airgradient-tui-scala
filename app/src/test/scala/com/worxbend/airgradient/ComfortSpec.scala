@@ -37,7 +37,9 @@ final class ComfortSpec extends AnyFunSuite:
     assert(Advice.ventilation(Some(indoor(1200)), Some(outside(30, temperature = -4))).headline == "Burst-ventilate")
     assert(Advice.ventilation(Some(indoor(1200)), Some(outside(160))).headline == "Ventilate briefly")
     assert(Advice.ventilation(Some(indoor(600)), Some(outside(160))).headline == "Keep windows closed")
-    assert(Advice.ventilation(Some(indoor(600, pm25 = 4)), Some(outside(60, pm25 = 20))).headline == "Keep windows closed")
+    assert(
+      Advice.ventilation(Some(indoor(600, pm25 = 4)), Some(outside(60, pm25 = 20))).headline == "Keep windows closed"
+    )
     assert(Advice.ventilation(Some(indoor(900)), Some(outside(30))).headline == "Ventilate soon")
     assert(Advice.ventilation(Some(indoor(1200)), None).detail.contains("no outdoor data"))
     assert(Advice.ventilation(Some(indoor(1200)), Some(outside(30))).urgent)

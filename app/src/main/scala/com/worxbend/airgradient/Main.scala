@@ -30,7 +30,7 @@ object Options:
         case Some(n) if n >= 5 && n <= 3600 => parse(rest, initial.copy(refresh = Some(n)))
         case _                              => Left("--refresh must be a whole number from 5 to 3600")
     case "--theme" :: value :: rest if Palettes.names.contains(value) => parse(rest, initial.copy(theme = Some(value)))
-    case "--location" :: value :: rest if value.trim.nonEmpty =>
+    case "--location" :: value :: rest if value.trim.nonEmpty         =>
       Location.parseCoordinates(value) match
         case Some(Left(error)) => Left(s"--location: $error")
         case _                 => parse(rest, initial.copy(location = Some(value.trim)))
