@@ -33,3 +33,10 @@ final class CliSpec extends AnyFunSuite:
     assert(Options.parse(List("--config")).isLeft)
     assert(Options.parse(List("--unknown")).isLeft)
     assert(Options.parse(List("--refresh", "5")).toOption.get.refresh.contains(5))
+
+  test("--location accepts a place name or valid coordinates and rejects impossible coordinates"):
+    assert(Options.parse(List("--location", "Kyiv")).toOption.get.location.contains("Kyiv"))
+    assert(Options.parse(List("--location", "10,20")).toOption.get.location.contains("10,20"))
+    assert(Options.parse(List("--location", "95,20")).left.toOption.get.contains("latitude"))
+    assert(Options.parse(List("--location", " ")).isLeft)
+    assert(Main.Help.contains("--location"))

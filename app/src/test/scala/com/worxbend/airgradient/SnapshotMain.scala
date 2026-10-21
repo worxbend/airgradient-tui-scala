@@ -37,7 +37,7 @@ object SnapshotMain:
       pilot
         .waitUntil("synthetic failure frame")(
           pilot.screenText.contains(if retainedHistory then "STALE / Synthetic device offline"
-          else "OFFLINE / Synthetic device offline")
+          else "OFFLINE / Synthetic device offline") && app.outdoor.peek.nonEmpty
         )
         .waitForIdle()
       capture(if retainedHistory then "state-stale" else "state-offline", directory, backend, pilot, app.theme)
@@ -57,7 +57,7 @@ object SnapshotMain:
     )
     val backend = HeadlessBackend(Size(120, 30))
     Pilot.using(backend) { app.runWith(backend) } { pilot =>
-      pilot.waitUntil("demo frame")(pilot.screenText.contains("61 samples"))
+      pilot.waitUntil("demo frame")(pilot.screenText.contains("61 samples") && app.outdoor.peek.nonEmpty).waitForIdle()
       capture(s"themes/$themeName", directory, backend, pilot, app.theme)
       if themeName == "aurora" then
         capture("dashboard", directory, backend, pilot, app.theme)
@@ -73,6 +73,10 @@ object SnapshotMain:
         capture("help", directory, backend, pilot, app.theme)
         pilot.press("esc").press("ctrl+p").typeText("paper").waitForIdle()
         capture("commands", directory, backend, pilot, app.theme)
+        Vector("3" -> "summary", "4" -> "comfort", "5" -> "outdoor", "6" -> "forecast").foreach { (key, name) =>
+          pilot.press("esc").press(key).waitForIdle()
+          capture(name, directory, backend, pilot, app.theme)
+        }
       if themeName == "grafana" then
         pilot.resize(160, 44).waitForIdle()
         capture("dashboard-wide", directory, backend, pilot, app.theme)
@@ -80,6 +84,12 @@ object SnapshotMain:
         capture("dashboard-compact", directory, backend, pilot, app.theme)
         pilot.resize(48, 18).waitForIdle()
         capture("dashboard-minimal", directory, backend, pilot, app.theme)
+        pilot.resize(160, 44).press("5").waitForIdle()
+        capture("outdoor-wide", directory, backend, pilot, app.theme)
+        pilot.press("6").waitForIdle()
+        capture("forecast-wide", directory, backend, pilot, app.theme)
+        pilot.resize(60, 24).press("5").waitForIdle()
+        capture("outdoor-compact", directory, backend, pilot, app.theme)
     }
 
   private def capture(name: String, directory: Path, backend: HeadlessBackend, pilot: Pilot, theme: Theme): Unit =

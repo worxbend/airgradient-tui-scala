@@ -1,0 +1,30 @@
+ AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
+ [ Overview ]   [ History ]  [ › Summary ]  [ Comfort ]   [ Outdoor ]   [ Forecast ]   [ Settings ]
+DEMO / updated 0s ago / every 30s / 61 samples                                 outside 9.4 C / US AQI 38 / Partly cloudy
+╭SUMMARY / 61 samples over 30 min──────────────────────────────────────────────────────────────────────────────────────╮
+│Metric          Current         Min       Mean      Peak      Change   Good   Status                                  │
+│AQI             24 US AQI       24        39        51        0        89%    Good                                    │
+│CO2             607 ppm         600       804       960       +4       43%    Good                                    │
+│PM2.5           4.5 ug/m3       4.4       7.1       9.2       0.0      84%    Good                                    │
+│PM1.0           2.4 ug/m3       2.4       3.5       4.4       0.0      100%   Good                                    │
+│PM10            8.9 ug/m3       8.8       12.2      14.8      +0.1     100%   Good                                    │
+│Particles >0.3  434 #/dL        430       543       630       +2       31%    Good                                    │
+│TVOC            66 index        65        85        101       0        87%    Good                                    │
+│NOx             2 index         2         2         2         0        0%     Moderate                                │
+│Temperature     22.2 C          22.2      22.7      23.0      0.0      100%   Good                                    │
+│Humidity        46.2 %          46.1      48.4      50.1      0.0      100%   Good                                    │
+│──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────│
+│Overall: Moderate                                                                                                     │
+│Good = share of reported samples in the Good band. Change = since the previous sample.                                │
+│Means describe samples, not time-weighted exposure.                                                                   │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+│                                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+Demo settings are session-only; no configuration or history is written.

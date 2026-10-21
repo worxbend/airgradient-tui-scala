@@ -29,9 +29,9 @@ Built with **Scala 3** + **[Glyphora](https://github.com/worxbend/glyphora)**. P
 
 <br><br>
 
-**📡 Direct to your monitor &nbsp; 🏡 Local history &nbsp; 🎨 15 palettes &nbsp; 🫧 Offline demo**
+**📡 Direct to your monitor &nbsp; 🌦️ Weather & outdoor air &nbsp; 🪟 Window advice &nbsp; 🎨 15 palettes &nbsp; 🫧 Offline demo**
 
-No cloud account. No API token. No GitHub Packages credentials.
+No cloud account. No API token. No GitHub Packages credentials. Outdoor data is opt-in.
 
 </div>
 
@@ -71,9 +71,19 @@ Connect your own monitor:
 ```
 
 With no flags, the dashboard reads the shared AirGradient desktop configuration.
-Press **c** to edit the address, refresh interval, and theme. **Ctrl+s** saves.
+Press **c** to edit the address, refresh interval, outdoor location, and theme. **Ctrl+s** saves.
 Command-line overrides apply to the current session until you explicitly save them.
 Refresh intervals are 5–3600 seconds; the default is 30.
+
+Add outdoor weather, air quality, and a 24-hour forecast for your area:
+
+```sh
+./mill app.run --url airgradient.local --location "Kyiv"
+./mill app.run --url airgradient.local --location 50.45,30.52
+```
+
+Outdoor data comes from [Open-Meteo](https://open-meteo.com/): free, no account, no key.
+Only the location's coordinates are sent, and only when you set a location.
 
 For scripts and non-interactive sessions:
 
@@ -94,6 +104,10 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 | :---: | --- |
 | 📡 | **Live readings** — AQI, CO₂, particulate measurements, TVOC/NOx indices, temperature, humidity. |
 | 📈 | **History with context** — Braille time-series charts, labeled axes, sample means and peaks, and honest gaps. |
+| 🌦️ | **Outside, too** — current weather, outdoor US/EU AQI and pollutants, and a 24-hour forecast from Open-Meteo. |
+| 🪟 | **Window advice** — compares indoor CO2 and PM2.5 with outdoor air, and picks the best hour to air out. |
+| 🌡️ | **Comfort** — dew point, water vapour, heat index, mold and condensation risk, and the CO2 trend per hour. |
+| 📋 | **Summary** — every reading at once with min, mean, peak, change, and time spent in the Good band. |
 | 🎨 | **Your terminal, your palette** — 15 themes, including Grafana-inspired dark and four light palettes. |
 | 🧭 | **Honest status** — stale readings show their age; missing readings stay visibly missing. |
 | 🏡 | **Local by default** — direct device requests, desktop-compatible settings, per-device history. |
@@ -103,6 +117,7 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 <summary><strong>A few thoughtful details</strong></summary>
 
 - Live AQI, CO2, particulate measurements, TVOC and NOx indices, temperature, and humidity.
+- Seven pages: Overview, History, Summary, Comfort, Outdoor, Forecast, and Settings; press <kbd>1</kbd>–<kbd>7</kbd>.
 - Responsive sensor cards, dual charts and a reporting matrix on large terminals, a full inventory on compact terminals, and explicit resize guidance below 48×18.
 - History charts with actual elapsed time, selectable metrics, and breaks for missing samples or missed polls.
 - 15 palettes with semantic status colors; every status has a word as well as a color.
@@ -119,8 +134,10 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 
 | Key | Action |
 | --- | --- |
-| <kbd>r</kbd> | Refresh now |
+| <kbd>1</kbd>–<kbd>7</kbd> | Overview, History, Summary, Comfort, Outdoor, Forecast, Settings |
+| <kbd>r</kbd> | Refresh now (outdoor data at most every 30 s) |
 | <kbd>h</kbd> | Switch overview / history |
+| <kbd>o</kbd> / <kbd>f</kbd> | Outdoor / forecast |
 | <kbd>j</kbd> / <kbd>k</kbd> | Next / previous history metric |
 | <kbd>c</kbd> | Settings |
 | <kbd>t</kbd> | Preview the next theme |
@@ -172,6 +189,26 @@ Synthetic data captured from the actual Glyphora renderer.
 </details>
 
 <details>
+<summary><strong>🌦️ Outdoor weather, air, and window advice</strong></summary>
+
+![Outdoor page with synthetic weather and air quality](docs/assets/outdoor.svg)
+
+![24-hour forecast with the best time to air out, using synthetic data](docs/assets/forecast.svg)
+
+Synthetic demo data captured from the actual Glyphora renderer. The live pages use Open-Meteo.
+
+</details>
+
+<details>
+<summary><strong>🌡️ Comfort and summary</strong></summary>
+
+![Comfort page with dew point, mold risk, and CO2 trend, using synthetic data](docs/assets/comfort.svg)
+
+![Summary table of every reading, using synthetic data](docs/assets/summary.svg)
+
+</details>
+
+<details>
 <summary><strong>⚙️ A peek at settings</strong></summary>
 
 ![Settings view rendered with synthetic demo data](docs/assets/settings.svg)
@@ -204,6 +241,7 @@ The full inventory stays available at 60×24, with a smaller layout down to 48×
 **Configuration:** `$XDG_CONFIG_HOME/airgradient-desktop/config.json`, falling back to
 `~/.config/airgradient-desktop/config.json`. Compatible keys are `server_url`,
 `refresh_interval_secs`, and `theme`. Unfamiliar desktop fields survive updates.
+This app also owns `tui_outdoor_location` (`name`, `latitude`, `longitude`); clearing the field removes it.
 An unknown saved theme falls back to Aurora. Invalid refresh settings produce a visible warning.
 Malformed JSON is reported and is never silently overwritten.
 
@@ -216,6 +254,16 @@ check-to-rename race remains. This is conflict detection, not a cross-client tra
 retained across device sessions; charts filter by the normalized device address.
 The Rust CLI's history file is kept separate. Timestamps represent receipt time.
 Malformed or truncated records are skipped. History errors stay visible without losing the live reading.
+
+**Outdoor data:** off until you set a location in Settings or pass `--location`. A place name is
+looked up once with Open-Meteo's geocoding API; coordinates are used as typed. Weather and air
+quality refresh every 15 minutes and are model estimates for the area, not readings from your sensor.
+Nothing outdoor is written to history. Demo mode uses synthetic outdoor data and makes no requests.
+Data: [Open-Meteo.com](https://open-meteo.com/) (CC BY 4.0), free for non-commercial use.
+
+Derived comfort values are standard approximations from the current temperature and humidity:
+Magnus dew point, absolute humidity, and the NOAA heat index (defined only at 26.7 °C and 40 % RH or above).
+Window advice is a heuristic, not a health recommendation.
 
 ```sh
 # Isolated settings and history

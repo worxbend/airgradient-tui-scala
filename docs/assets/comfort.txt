@@ -1,0 +1,30 @@
+ AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
+ [ Overview ]   [ History ]   [ Summary ]  [ › Comfort ]  [ Outdoor ]   [ Forecast ]   [ Settings ]
+DEMO / updated 0s ago / every 30s / 61 samples                                 outside 9.4 C / US AQI 38 / Partly cloudy
+╭THERMAL COMFORT / derived─────────────╮ ╭MOISTURE / mold and condensation─────╮ ╭VENTILATION / CO2────────────────────╮
+│Temperature   22.2 C          Good    │ │Mold risk     Low                    │ │CO2 now       607 ppm         Good   │
+│Humidity      46.2 %          Good    │ │0% of samples at 70 % RH+            │ │CO2 trend     -345 ppm/h             │
+│Dew point     10.1 C                  │ │Condensation  Likely on cold glass   │ │Above 1000    0% of samples          │
+│Water vapour  9.1 g/m3                │ │outside 9.4 C, dew point 10.1 C      │ │─────────────────────────────────────│
+│Heat index    n/a below 26.7 C        │ │─────────────────────────────────────│ │No action needed                     │
+│──────────────────────────────────────│ │Mold: RH at 70 %+ for long spells    │ │Fresh indoors; outside AQI 38.       │
+│Comfortable                           │ │Wet glass: surface below dew point   │ │                                     │
+╰──────────────────────────────────────╯ ╰─────────────────────────────────────╯ ╰─────────────────────────────────────╯
+╭ABOUT THESE NUMBERS / estimates, not extra sensors────────────────────────────────────────────────────────────────────╮
+│Dew point: Magnus formula. Water vapour: absolute humidity in grams per cubic metre.                                  │
+│Heat index: NOAA regression, defined only at 26.7 C and 40 % RH or above.                                             │
+│CO2 trend: change across the last 30 minutes of successful samples.                                                   │
+│Window advice compares indoor CO2 and PM2.5 with outdoor air when a location is set.                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+
+
+
+
+
+
+
+
+
+Demo settings are session-only; no configuration or history is written.

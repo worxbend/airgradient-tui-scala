@@ -10,6 +10,7 @@ final case class Options(
     url: Option[String] = None,
     refresh: Option[Int] = None,
     theme: Option[String] = None,
+    location: Option[String] = None,
     config: Path = LocalPaths.config,
     history: Path = LocalPaths.history,
     recordHistory: Boolean = !sys.env.get("AIRGRADIENT_TUI_NO_HISTORY").contains("1")
@@ -29,6 +30,10 @@ object Options:
         case Some(n) if n >= 5 && n <= 3600 => parse(rest, initial.copy(refresh = Some(n)))
         case _                              => Left("--refresh must be a whole number from 5 to 3600")
     case "--theme" :: value :: rest if Palettes.names.contains(value) => parse(rest, initial.copy(theme = Some(value)))
+    case "--location" :: value :: rest if value.trim.nonEmpty =>
+      Location.parseCoordinates(value) match
+        case Some(Left(error)) => Left(s"--location: $error")
+        case _                 => parse(rest, initial.copy(location = Some(value.trim)))
     case "--config" :: value :: rest  => parse(rest, initial.copy(config = Path.of(value)))
     case "--history" :: value :: rest => parse(rest, initial.copy(history = Path.of(value)))
     case option :: _                  => Left(s"unknown option or missing value: $option; use --help")
@@ -43,6 +48,8 @@ object Main:
     |  --url HOST          LAN hostname or http(s)://host:port (session override)
     |  --refresh SECONDS   Poll every 5–3600 seconds (default: 30)
     |  --theme NAME        Theme name (session override; see list below)
+    |  --location PLACE    City name or LAT,LON for outdoor weather and air (session override)
+    |                      Data from Open-Meteo (free, no key); only these coordinates are sent
     |  --once              Fetch once and print a measurement table
     |  --json              Fetch once and print normalized JSON; missing values are null
     |  --config PATH       Shared desktop config, or an isolated JSON file
@@ -54,10 +61,22 @@ object Main:
     |Themes:
     |  ${Palettes.names.grouped(5).map(_.mkString(", ")).mkString("\n    |  ")}
     |
-    |Dashboard: r refresh / h history / c settings / t theme / ? help / q quit
+    |Dashboard: 1-7 pages / r refresh / h history / o outdoor / f forecast / c settings / t theme / ? help / q quit
     |Commands: Ctrl+p to search navigation, metrics, and themes
     |Settings: Tab next control / Ctrl+s save / Esc back
     |""".stripMargin
+
+  /** A place name is resolved once at startup, before the terminal UI owns the screen. Demo stays offline. */
+  private def resolveLocation(options: Options): Either[String, Option[Location]] =
+    options.location match
+      case None       => Right(None)
+      case Some(text) =>
+        Location.parseCoordinates(text) match
+          case Some(result) => result.map(Some(_))
+          case None         =>
+            val client: OutdoorClient = if options.demo then DemoOutdoorClient() else OpenMeteoClient()
+            try client.geocode(text).map(Some(_))
+            finally client.close()
 
   def main(args: Array[String]): Unit = System.exit(run(args.toList, System.out, System.err))
 
@@ -134,12 +153,21 @@ object Main:
                     diskHistory
                       .load(address.toOption.fold("")(_.toString))
                       .fold(error => { err.println(error); Vector.empty }, identity)
-                  val app =
-                    Dashboard(saved.copy(settings = settings), config, historyStore, client, options.demo, samples)
-                  app.run() match
-                    case Right(_)    => 0
-                    case Left(error) =>
-                      err.println(
-                        s"Cannot open dashboard: $error. Use --once or --json outside an interactive terminal."
+                  resolveLocation(options).map(_.orElse(settings.outdoor)) match
+                    case Left(error)    => err.println(s"--location: $error"); 2
+                    case Right(outdoor) =>
+                      val app = Dashboard(
+                        saved.copy(settings = settings.copy(outdoor = outdoor)),
+                        config,
+                        historyStore,
+                        client,
+                        options.demo,
+                        samples
                       )
-                      1
+                      app.run() match
+                        case Right(_)    => 0
+                        case Left(error) =>
+                          err.println(
+                            s"Cannot open dashboard: $error. Use --once or --json outside an interactive terminal."
+                          )
+                          1
