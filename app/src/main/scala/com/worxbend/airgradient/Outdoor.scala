@@ -8,6 +8,7 @@ import java.time.Duration
 import java.util.Locale
 import java.util.concurrent.{CompletableFuture, TimeUnit, TimeoutException}
 import java.util.concurrent.atomic.AtomicReference
+import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NonFatal
 
 /** A named point for outdoor data. Only these coordinates leave the machine, and only when a location is configured. */
@@ -58,6 +59,12 @@ enum OutdoorMetric(
   case So2           extends OutdoorMetric("sulphur_dioxide", "SO2", "ug/m3", 0, 0, 5000)
   case Co            extends OutdoorMetric("carbon_monoxide", "CO", "ug/m3", 0, 0, 100000)
   case Uv            extends OutdoorMetric("uv_index", "UV index", "", 1, 0, 30)
+  case AlderPollen   extends OutdoorMetric("alder_pollen", "Alder", "grains/m3", 0, 0, 100000)
+  case BirchPollen   extends OutdoorMetric("birch_pollen", "Birch", "grains/m3", 0, 0, 100000)
+  case GrassPollen   extends OutdoorMetric("grass_pollen", "Grass", "grains/m3", 0, 0, 100000)
+  case MugwortPollen extends OutdoorMetric("mugwort_pollen", "Mugwort", "grains/m3", 0, 0, 100000)
+  case OlivePollen   extends OutdoorMetric("olive_pollen", "Olive", "grains/m3", 0, 0, 100000)
+  case RagweedPollen extends OutdoorMetric("ragweed_pollen", "Ragweed", "grains/m3", 0, 0, 100000)
 
   def format(value: Option[Double]): String = value.fold("--")(n => String.format(Locale.ROOT, s"%.${decimals}f", n))
 
@@ -75,12 +82,19 @@ enum OutdoorMetric(
       case O3    => Some(value.fold(Band.Unknown)(ladder(Vector(50, 100, 130, 240))))
       case So2   => Some(value.fold(Band.Unknown)(ladder(Vector(100, 200, 350, 500))))
       case Uv    => Some(value.fold(Band.Unknown)(ladder(Vector(2, 5, 7, 10))))
-      case _     => None
+      // Approximate counts used by European pollen services; species thresholds differ, so treat as a guide.
+      case AlderPollen | BirchPollen | GrassPollen | MugwortPollen | OlivePollen | RagweedPollen =>
+        Some(value.fold(Band.Unknown)(ladder(Vector(10, 50, 100, 500))))
+      case _ => None
 
 object OutdoorMetric:
   val weather: Vector[OutdoorMetric] =
     Vector(Temperature, FeelsLike, Humidity, Wind, Gusts, Pressure, Clouds, Precipitation)
   val air: Vector[OutdoorMetric] = Vector(UsAqi, EuAqi, Pm25, Pm10, No2, O3, So2, Co, Uv)
+
+  /** CAMS pollen forecasts cover Europe only; elsewhere Open-Meteo returns null, shown as unavailable. */
+  val pollen: Vector[OutdoorMetric] =
+    Vector(AlderPollen, BirchPollen, GrassPollen, MugwortPollen, OlivePollen, RagweedPollen)
 
 /** One forecast hour. Times are wall-clock labels in the location's own time zone, never the machine's. */
 final case class ForecastHour(
@@ -92,6 +106,27 @@ final case class ForecastHour(
 ):
   def label: String = if time.length >= 16 then time.substring(11, 16) else time
 
+/** One forecast day in the location's own calendar. */
+final case class DailyOutlook(
+    date: String,
+    high: Option[Double],
+    low: Option[Double],
+    rainChance: Option[Double],
+    uvMax: Option[Double],
+    sunrise: Option[String],
+    sunset: Option[String]
+):
+  def label: String =
+    try
+      val day = java.time.LocalDate.parse(date)
+      s"${day.getDayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)} ${day.getDayOfMonth}"
+    catch case NonFatal(_) => date
+  def sun: String =
+    def clock(time: String) = if time.length >= 16 then time.substring(11, 16) else time
+    (sunrise, sunset) match
+      case (Some(up), Some(down)) => s"${clock(up)}-${clock(down)}"
+      case _                      => "--"
+
 final case class OutdoorReport(
     location: Location,
     receivedAt: Long,
@@ -100,7 +135,8 @@ final case class OutdoorReport(
     weatherCode: Option[Int],
     windDirection: Option[Double],
     hourly: Vector[ForecastHour],
-    warnings: Vector[String] = Vector.empty
+    warnings: Vector[String] = Vector.empty,
+    daily: Vector[DailyOutlook] = Vector.empty
 ):
   def value(metric: OutdoorMetric): Option[Double] = values.get(metric)
   def condition: String                            = weatherCode.fold("conditions unavailable")(Weather.describe)
@@ -141,7 +177,16 @@ object Weather:
 object OpenMeteo:
   val weatherCurrent: Vector[String] =
     OutdoorMetric.weather.map(_.key) ++ Vector("weather_code", "wind_direction_10m")
-  val airCurrent: Vector[String] = OutdoorMetric.air.map(_.key)
+  val airCurrent: Vector[String] = (OutdoorMetric.air ++ OutdoorMetric.pollen).map(_.key)
+  val dailyKeys: Vector[String]  =
+    Vector(
+      "temperature_2m_max",
+      "temperature_2m_min",
+      "precipitation_probability_max",
+      "uv_index_max",
+      "sunrise",
+      "sunset"
+    )
 
   private def number(node: ujson.Value): Option[Double] = node match
     case ujson.Num(n) if n.isFinite => Some(n)
@@ -185,8 +230,31 @@ object OpenMeteo:
       weatherCode: Option[Int],
       windDirection: Option[Double],
       hourly: Map[String, Map[String, Option[Double]]],
-      order: Vector[String]
+      order: Vector[String],
+      daily: Vector[DailyOutlook] = Vector.empty
   )
+
+  private def outlook(root: ujson.Value): Vector[DailyOutlook] =
+    objectAt(root, "daily").fold(Vector.empty[DailyOutlook]) { node =>
+      def column(key: String) =
+        node.get(key).collect { case arr: ujson.Arr => arr.value.toVector }.getOrElse(Vector.empty)
+      def numbers(key: String, min: Double, max: Double)(i: Int) =
+        column(key).lift(i).flatMap(number).filter(n => n >= min && n <= max)
+      def words(key: String)(i: Int) = column(key).lift(i).collect { case ujson.Str(s) => s }
+      column("time").zipWithIndex
+        .collect { case (ujson.Str(date), i) =>
+          DailyOutlook(
+            date,
+            numbers("temperature_2m_max", -90, 60)(i),
+            numbers("temperature_2m_min", -90, 60)(i),
+            numbers("precipitation_probability_max", 0, 100)(i),
+            numbers("uv_index_max", 0, 30)(i),
+            words("sunrise")(i),
+            words("sunset")(i)
+          )
+        }
+        .take(3)
+    }
 
   private def part(root: ujson.Value, metrics: Vector[OutdoorMetric], hourlyKeys: Vector[String]): Part =
     val node  = objectAt(root, "current").getOrElse(Map.empty)
@@ -202,10 +270,13 @@ object OpenMeteo:
     )
 
   def parseWeather(body: String): Either[String, Part] =
-    read(body).map(part(_, OutdoorMetric.weather, Vector("temperature_2m", "precipitation_probability")))
+    read(body).map(root =>
+      part(root, OutdoorMetric.weather, Vector("temperature_2m", "precipitation_probability"))
+        .copy(daily = outlook(root))
+    )
 
   def parseAir(body: String): Either[String, Part] =
-    read(body).map(part(_, OutdoorMetric.air, Vector("us_aqi", "pm2_5")))
+    read(body).map(part(_, OutdoorMetric.air ++ OutdoorMetric.pollen, Vector("us_aqi", "pm2_5")))
 
   /** Either half may be missing; a report needs at least one of them. */
   def combine(
@@ -242,7 +313,8 @@ object OpenMeteo:
             Vector(
               weather.left.toOption.map(e => s"weather unavailable: $e"),
               air.left.toOption.map(e => s"air quality unavailable: $e")
-            ).flatten
+            ).flatten,
+            w.map(_.daily).getOrElse(Vector.empty)
           )
         )
 
@@ -284,7 +356,7 @@ final class OpenMeteoClient(
   private val http = HttpClient.newBuilder().connectTimeout(timeout).followRedirects(HttpClient.Redirect.NEVER).build()
   private val pending = new AtomicReference[Vector[CompletableFuture[?]]](Vector.empty)
 
-  private def query(location: Location, current: Vector[String], hourly: Vector[String]): String =
+  private def query(location: Location, current: Vector[String], hourly: Vector[String], extra: String = ""): String =
     String.format(
       Locale.ROOT,
       "latitude=%.4f&longitude=%.4f&current=%s&hourly=%s&forecast_hours=24&timezone=auto",
@@ -292,7 +364,7 @@ final class OpenMeteoClient(
       location.longitude,
       current.mkString(","),
       hourly.mkString(",")
-    )
+    ) + extra
 
   private def get(uri: URI): Either[String, String] =
     val request = HttpRequest
@@ -326,7 +398,8 @@ final class OpenMeteoClient(
         "v1/forecast?" + query(
           location,
           OpenMeteo.weatherCurrent,
-          Vector("temperature_2m", "precipitation_probability")
+          Vector("temperature_2m", "precipitation_probability"),
+          s"&daily=${OpenMeteo.dailyKeys.mkString(",")}&forecast_days=3"
         )
       )
     ).flatMap(OpenMeteo.parseWeather)
@@ -358,12 +431,13 @@ object DemoOutdoor:
   val Place: Location = Location("Demo City (synthetic)", 0, 0)
 
   def report(location: Location, receivedAt: Long): OutdoorReport =
-    val firstHour = math.floorMod(receivedAt / 3600000L, 24L).toInt
-    val hours     = Vector.tabulate(24) { n =>
-      val hour = (firstHour + n) % 24
-      val wave = math.sin((hour - 9) / 24.0 * 2 * math.Pi)
+    // UTC wall-clock labels keep the synthetic forecast identical on every machine.
+    val start = Math.floorDiv(receivedAt, 3600000L) * 3600L
+    val hours = Vector.tabulate(24) { n =>
+      val time = java.time.LocalDateTime.ofEpochSecond(start + n * 3600L, 0, java.time.ZoneOffset.UTC)
+      val wave = math.sin((time.getHour - 9) / 24.0 * 2 * math.Pi)
       ForecastHour(
-        f"2030-01-01T$hour%02d:00",
+        time.toString,
         Some(math.round((9.4 + wave * 4.2) * 10) / 10.0),
         Some(math.max(0.0, math.round(20 - wave * 18).toDouble)),
         Some(math.round(38 - wave * 14).toDouble),
@@ -391,9 +465,28 @@ object DemoOutdoor:
         OutdoorMetric.O3            -> 52,
         OutdoorMetric.So2           -> 3,
         OutdoorMetric.Co            -> 210,
-        OutdoorMetric.Uv            -> 1.2
+        OutdoorMetric.Uv            -> 1.2,
+        OutdoorMetric.AlderPollen   -> 0,
+        OutdoorMetric.BirchPollen   -> 3,
+        OutdoorMetric.GrassPollen   -> 14,
+        OutdoorMetric.MugwortPollen -> 1,
+        OutdoorMetric.OlivePollen   -> 0,
+        OutdoorMetric.RagweedPollen -> 0
       ),
       Some(2),
       Some(225),
-      hours
+      hours,
+      daily = Vector((13.6, 5.2, 38.0, 6.4), (11.8, 3.9, 64.0, 2.1), (8.7, -1.4, 22.0, 1.8)).zipWithIndex.map {
+        case ((high, low, rain, uv), n) =>
+          val date = hours.head.time.take(10).pipe(java.time.LocalDate.parse).plusDays(n).toString
+          DailyOutlook(
+            date,
+            Some(high),
+            Some(low),
+            Some(rain),
+            Some(uv),
+            Some(s"${date}T07:42"),
+            Some(s"${date}T16:58")
+          )
+      }
     )

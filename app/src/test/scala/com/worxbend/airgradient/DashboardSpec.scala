@@ -182,9 +182,10 @@ final class DashboardSpec extends AnyFunSuite:
       clock.addAndGet(60000)
       pilot.press("r").waitUntil("stale outdoor frame")(pilot.screenText.contains("STALE / Open-Meteo: HTTP 503"))
       assert(pilot.screenText.contains("Partly cloudy"), "the last report stays on screen")
+      assert(pilot.screenText.contains("Pollen: Moderate"))
       pilot.press("6").waitForIdle()
-      assert(pilot.screenText.contains("Best time to air out"))
-      assert(pilot.screenText.contains("NEXT HOURS"))
+      Vector("Best time to air out", "NEXT HOURS", "NEXT DAYS", "Heads-up: UV up to 6.4 today")
+        .foreach(token => assert(pilot.screenText.contains(token), token))
     }
     assert(closed.get())
 
@@ -214,4 +215,13 @@ final class DashboardSpec extends AnyFunSuite:
       val json = ujson.read(Files.readString(file))
       assert(json(ConfigStore.OutdoorKey)("longitude").num == -7.25)
       assert(json("desktop")("keep").num == 1)
+    }
+
+  test("a settings message does not follow the user to other pages"):
+    withApp(Vector(Right(Demo.snapshot(0)))) { (_, pilot, _, _) =>
+      pilot.press("c").waitUntil("settings")(pilot.screenText.contains("Refresh interval"))
+      pilot.press("t").waitUntil("theme preview message")(pilot.screenText.contains("session only"))
+      pilot.press("esc").waitForIdle()
+      assert(!pilot.screenText.contains("session only"))
+      assert(pilot.screenText.contains("r refresh"))
     }

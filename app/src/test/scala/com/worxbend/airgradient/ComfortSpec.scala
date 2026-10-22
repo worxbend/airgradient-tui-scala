@@ -69,3 +69,22 @@ final class ComfortSpec extends AnyFunSuite:
     assert(Comfort.condensation(Some(10), Some(20)).band == Band.Good)
     assert(Comfort.condensation(Some(10), None).detail.contains("outdoor location"))
     assert(Comfort.moldRisk(samples).detail == "33% of samples at 70 % RH+")
+
+  test("heads-up lists the first notable event of each kind in the next 12 hours"):
+    def hour(n: Int, aqi: Double = 40, rain: Double = 10, temperature: Double = 8) =
+      ForecastHour(f"2030-01-01T$n%02d:00", Some(temperature), Some(rain), Some(aqi), None)
+    val calm =
+      DemoOutdoor.report(DemoOutdoor.Place, 0).copy(hourly = Vector.tabulate(24)(hour(_)), daily = Vector.empty)
+    assert(Advice.headsUp(calm).isEmpty)
+    val stormy = calm.copy(
+      hourly = Vector(hour(0), hour(1, rain = 80), hour(2, aqi = 130), hour(3, aqi = 160, temperature = -1.5)) ++
+        Vector.tabulate(20)(n => hour(n + 4)),
+      daily = Vector(DailyOutlook("2030-01-01", None, None, None, Some(7.2), None, None))
+    )
+    assert(
+      Advice.headsUp(stormy).map(_.text) ==
+        Vector("US AQI 130 by 02:00", "Rain 80% around 01:00", "Frost -1.5 C around 03:00", "UV up to 7.2 today")
+    )
+    assert(Advice.headsUp(stormy).head.band == Band.Elevated, "US AQI 101-150 is the sensitive-groups band")
+    val later = calm.copy(hourly = Vector.tabulate(24)(n => if n == 13 then hour(n, aqi = 200) else hour(n)))
+    assert(Advice.headsUp(later).isEmpty, "events after 12 hours are not heads-up")

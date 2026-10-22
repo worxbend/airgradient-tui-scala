@@ -13,6 +13,7 @@ Demo City (synthetic) / model time 08:00 / updated 0s ago
 │Precipitation 0.0 mm                                      │ │CO            210 ug/m3                                  │
 │                                                          │ │UV index      1.2             Good                       │
 ╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────────────────────────╯
+Pollen: Moderate   Grass 14 / Birch 3 / Mugwort 1 grains/m3
 ╭INDOOR VS OUTDOOR / should the window open?───────────────────────────────────────────────────────────────────────────╮
 │Reading        Indoor        Outdoor       Outside - in                                                               │
 │Temperature    22.2 C        9.4 C         -12.8                                                                      │
@@ -26,5 +27,4 @@ Synthetic outdoor data / offline demo / no network requests
 
 
 
-
-Demo settings are session-only; no configuration or history is written.
+r refresh   h history   c settings   1-7 pages   t theme   ^p commands   ? help   q quit                    aurora

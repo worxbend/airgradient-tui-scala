@@ -14,8 +14,8 @@ Demo City (synthetic) / model time 08:00 / updated 0s ago
 │EU AQI        27 EAQI         Moderate                    │
 │No action needed                                          │
 ╰──────────────────────────────────────────────────────────╯
+Pollen: Moderate   Grass 14 / Birch 3 / Mugwort 1 grains/m3
 Synthetic outdoor data / offline demo / no network requests
-
 
 
 

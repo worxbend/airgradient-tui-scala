@@ -26,6 +26,7 @@ flowchart LR
 - **Telemetry.scala** derives pure, per-metric sample summaries and gap-aware chart segments. A long-lived Glyphora `Computed` caches these until readings or the refresh interval change, rather than recomputing on age ticks. The dashboard disposes it on shutdown. Missing readings never become zeroes; last-sample deltas are withheld across missing readings or missed polls. Means describe reported samples rather than time-weighted exposure.
 - **Palettes.scala** holds 15 semantic palettes, including a Grafana-inspired dark palette and four light palettes. The catalog supplies CLI validation, settings persistence, keyboard cycling, and renderer previews. Views ask for status styles instead of embedding ANSI color codes. New palettes keep semantic text at a contrast ratio of at least 4.5:1 on their base and raised surfaces, and borders at least 3:1. Focus and loading styles derive from the same palette.
 - **Outdoor.scala** owns locations, Open-Meteo request building and parsing, outdoor bands (US AQI, European AQI pollutant bands, UV), WMO weather descriptions, and the synthetic demo client. Forecast hours keep the location's own wall-clock labels, so captures do not depend on the machine's time zone.
+- Pollen (alder, birch, grass, mugwort, olive, ragweed) comes from the CAMS European model; outside Europe the values are null and shown as unavailable. Pollen bands are approximate and species-agnostic. The daily outlook (three days) carries highs, lows, rain chance, UV peak, and sunrise/sunset in the location's calendar.
 - **Comfort.scala** holds pure derived metrics (dew point, absolute humidity, heat index, mold and condensation risk, CO2 trend) and the window-advice rules that compare indoor and outdoor air.
 - **Main.scala** owns command parsing, session overrides, one-shot output, startup, and exit codes.
 
@@ -40,7 +41,9 @@ Outdoor data has its own owned task scope, created only when a location exists. 
 device poller. Changing the location retires the scope and cancels in-flight requests. A failed refresh
 keeps the last report on screen, marked STALE. Weather and air are fetched separately; one failing half
 still yields a report with a visible warning. Geocoding a typed place name runs in the save task, off
-the render thread. Demo mode always uses the synthetic client.
+the render thread. Demo mode always uses the synthetic client. Heads-up alerts look 12 hours ahead;
+the first report after start or a location change only sets a baseline, so notifications announce
+new events rather than repeating what the Forecast page already shows.
 
 Successful samples alone enter history. Failed requests preserve the last sample and its
 receipt time. A stored sample is never reported as a newly successful request. Charts use

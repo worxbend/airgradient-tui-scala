@@ -88,6 +88,8 @@ object Comfort:
     val readings = samples.flatMap(_.snapshot.value(metric))
     Option.when(readings.nonEmpty)(readings.count(_ >= limit).toDouble / readings.size)
 
+final case class HeadsUp(text: String, band: Band)
+
 /** Window advice from indoor CO2 and particulates against outdoor air. A heuristic, not a health recommendation. */
 final case class Advice(headline: String, detail: String, band: Band):
   def urgent: Boolean = band.ordinal >= Band.Elevated.ordinal && !headline.startsWith("Keep")
@@ -128,6 +130,25 @@ object Advice:
         else if co2Rising then Advice("Ventilate soon", s"$co2Text, nearing 1000 ppm.", Band.Moderate)
         else if co2.isEmpty then Advice("No CO2 reading", "Advice needs a CO2 reading.", Band.Unknown)
         else Advice("No action needed", s"Fresh indoors; $aqiText.", Band.Good)
+
+  /** The first notable event of each kind in the next 12 forecast hours, plus today's UV peak. */
+  def headsUp(report: OutdoorReport): Vector[HeadsUp] =
+    val next = report.hourly.take(12)
+    Vector(
+      next
+        .find(_.usAqi.exists(_ > 100))
+        .map(h => HeadsUp(s"US AQI ${fmt(h.usAqi.get)} by ${h.label}", Metric.Aqi.classify(h.usAqi))),
+      next
+        .find(_.precipitationProbability.exists(_ >= 70))
+        .map(h => HeadsUp(s"Rain ${fmt(h.precipitationProbability.get)}% around ${h.label}", Band.Moderate)),
+      next
+        .find(_.temperature.exists(_ <= 0))
+        .map(h => HeadsUp(s"Frost ${fmt(h.temperature.get, 1)} C around ${h.label}", Band.Moderate)),
+      report.daily.headOption
+        .flatMap(_.uvMax)
+        .filter(_ >= 6)
+        .map(uv => HeadsUp(s"UV up to ${fmt(uv, 1)} today", OutdoorMetric.Uv.classify(Some(uv)).get))
+    ).flatten
 
   /** The forecast hour with the cleanest air, preferring mild temperatures; earliest wins ties. */
   def bestHour(hours: Vector[ForecastHour]): Option[ForecastHour] =

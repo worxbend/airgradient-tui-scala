@@ -18,10 +18,14 @@ final class OutdoorSpec extends AnyFunSuite:
       |"relative_humidity_2m":65,"wind_speed_10m":11.0,"wind_gusts_10m":null,"wind_direction_10m":92,
       |"surface_pressure":1009.5,"cloud_cover":75,"precipitation":0.2,"weather_code":61},
       |"hourly":{"time":["2030-01-01T09:00","2030-01-01T10:00","2030-01-01T11:00"],
-      |"temperature_2m":[12.0,null,14.5],"precipitation_probability":[40,55,999]}}""".stripMargin
+      |"temperature_2m":[12.0,null,14.5],"precipitation_probability":[40,55,999]},
+      |"daily":{"time":["2030-01-01","2030-01-02"],"temperature_2m_max":[14.5,99],"temperature_2m_min":[8.1,6.0],
+      |"precipitation_probability_max":[55,null],"uv_index_max":[3.2,1.1],
+      |"sunrise":["2030-01-01T07:12","2030-01-02T07:12"],"sunset":["2030-01-01T16:05",null]}}""".stripMargin
   private val air =
     """{"current":{"time":"2030-01-01T09:00","us_aqi":61,"european_aqi":35,"pm2_5":18.2,"pm10":25.0,
-      |"nitrogen_dioxide":21.0,"ozone":44.0,"sulphur_dioxide":2.0,"carbon_monoxide":230.0,"uv_index":-3},
+      |"nitrogen_dioxide":21.0,"ozone":44.0,"sulphur_dioxide":2.0,"carbon_monoxide":230.0,"uv_index":-3,
+      |"birch_pollen":45.0,"grass_pollen":null,"alder_pollen":0.0},
       |"hourly":{"time":["2030-01-01T09:00","2030-01-01T10:00","2030-01-01T11:00"],
       |"us_aqi":[61,48,null],"pm2_5":[18.2,11.5,9.0]}}""".stripMargin
 
@@ -137,3 +141,50 @@ final class OutdoorSpec extends AnyFunSuite:
     assert(first.toOption.get.hourly.size == 24)
     assert(first.toOption.get.hourly.head.label == "08:00")
     assert(client.geocode("Anywhere").toOption.get.name == "Anywhere (demo)")
+
+  test("pollen and the daily outlook parse with gaps kept as gaps"):
+    val report =
+      OpenMeteo.combine(place, 1000, OpenMeteo.parseWeather(weather), OpenMeteo.parseAir(air)).toOption.get
+    assert(report.value(OutdoorMetric.BirchPollen).contains(45))
+    assert(OutdoorMetric.BirchPollen.classify(Some(45)).contains(Band.Moderate))
+    assert(report.value(OutdoorMetric.AlderPollen).contains(0), "a reported zero is a reading")
+    assert(report.value(OutdoorMetric.GrassPollen).isEmpty, "null outside the pollen season or region")
+    assert(report.daily.map(_.label) == Vector("Tue 1", "Wed 2"))
+    assert(report.daily.head.sun == "07:12-16:05")
+    assert(report.daily(1).high.isEmpty, "impossible highs are dropped")
+    assert(report.daily(1).rainChance.isEmpty)
+    assert(report.daily(1).sun == "--")
+    assert(OpenMeteo.combine(place, 1000, Left("down"), OpenMeteo.parseAir(air)).toOption.get.daily.isEmpty)
+
+  test("the client asks for three forecast days and pollen"):
+    val queries = ConcurrentLinkedQueue[String]()
+    val server  = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+    Vector("/v1/forecast" -> weather, "/v1/air-quality" -> air).foreach { (path, body) =>
+      server.createContext(
+        path,
+        exchange =>
+          queries.add(exchange.getRequestURI.getRawQuery)
+          val bytes = body.getBytes(UTF_8)
+          exchange.sendResponseHeaders(200, bytes.length)
+          exchange.getResponseBody.write(bytes)
+          exchange.close()
+      )
+    }
+    server.start()
+    val base   = URI(s"http://127.0.0.1:${server.getAddress.getPort}/")
+    val client = OpenMeteoClient(base, base, base)
+    try
+      assert(client.report(place, 1).toOption.get.daily.size == 2)
+      val sent = queries.asScala.toVector
+      assert(sent.exists(_.contains("&daily=temperature_2m_max,temperature_2m_min,")))
+      assert(sent.exists(_.contains("forecast_days=3")))
+      assert(sent.exists(_.contains("birch_pollen")))
+    finally
+      client.close()
+      server.stop(0)
+
+  test("synthetic demo data includes pollen and three days, on UTC labels"):
+    val report = DemoOutdoor.report(DemoOutdoor.Place, 1800000000000L)
+    assert(report.daily.map(_.label) == Vector("Fri 15", "Sat 16", "Sun 17"))
+    assert(report.value(OutdoorMetric.GrassPollen).contains(14))
+    assert(report.hourly.map(_.time).distinct.size == 24)

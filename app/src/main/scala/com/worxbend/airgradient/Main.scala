@@ -2,6 +2,7 @@ package com.worxbend.airgradient
 
 import java.io.PrintStream
 import java.nio.file.Path
+import scala.util.chaining.scalaUtilChainingOps
 
 final case class Options(
     demo: Boolean = false,
@@ -50,7 +51,7 @@ object Main:
     |  --theme NAME        Theme name (session override; see list below)
     |  --location PLACE    City name or LAT,LON for outdoor weather and air (session override)
     |                      Data from Open-Meteo (free, no key); only these coordinates are sent
-    |  --once              Fetch once and print a measurement table
+    |  --once              Fetch once and print a measurement table (plus outdoor data if a location is set)
     |  --json              Fetch once and print normalized JSON; missing values are null
     |  --config PATH       Shared desktop config, or an isolated JSON file
     |  --history PATH      Local per-device history JSONL
@@ -77,6 +78,75 @@ object Main:
             val client: OutdoorClient = if options.demo then DemoOutdoorClient() else OpenMeteoClient()
             try client.geocode(text).map(Some(_))
             finally client.close()
+
+  private def outdoorReport(place: Location, at: Long, demo: Boolean): Either[String, OutdoorReport] =
+    val client: OutdoorClient = if demo then DemoOutdoorClient() else OpenMeteoClient()
+    try client.report(place, at)
+    finally client.close()
+
+  private def nullable(value: Option[Double]): ujson.Value = value.fold[ujson.Value](ujson.Null)(ujson.Num(_))
+
+  /** Outdoor data is secondary in one-shot output: a failure becomes an error field, never a failed exit. */
+  def outdoorJson(result: Either[String, OutdoorReport], indoor: Snapshot): ujson.Value = result match
+    case Left(error)   => ujson.Obj("error" -> error)
+    case Right(report) =>
+      val advice = Advice.ventilation(Some(indoor), Some(report))
+      ujson.Obj(
+        "location" -> ujson.Obj(
+          "name"      -> report.location.name,
+          "latitude"  -> report.location.latitude,
+          "longitude" -> report.location.longitude
+        ),
+        "observed_at"    -> report.observedAt.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+        "condition"      -> report.condition,
+        "wind_direction" -> nullable(report.windDirection),
+        "current"        -> ujson.Obj.from(OutdoorMetric.values.map(m => m.key -> nullable(report.value(m)))),
+        "advice"         -> ujson.Obj("headline" -> advice.headline, "detail" -> advice.detail),
+        "heads_up"       -> ujson.Arr.from(Advice.headsUp(report).map(alert => ujson.Str(alert.text))),
+        "warnings"       -> ujson.Arr.from(report.warnings.map(ujson.Str(_)))
+      )
+
+  private def printOutdoor(
+      result: Either[String, OutdoorReport],
+      indoor: Snapshot,
+      out: PrintStream,
+      err: PrintStream
+  ): Unit = result match
+    case Left(error)   => err.println(s"outdoor data unavailable: $error")
+    case Right(report) =>
+      out.println()
+      out.println(s"Outdoor / ${report.location.name} / ${report.condition}")
+      Vector(
+        OutdoorMetric.Temperature,
+        OutdoorMetric.FeelsLike,
+        OutdoorMetric.Humidity,
+        OutdoorMetric.Wind,
+        OutdoorMetric.Precipitation,
+        OutdoorMetric.UsAqi,
+        OutdoorMetric.EuAqi,
+        OutdoorMetric.Pm25,
+        OutdoorMetric.Pm10,
+        OutdoorMetric.Uv
+      ).foreach { metric =>
+        val value  = report.value(metric)
+        val status =
+          if metric == OutdoorMetric.Wind then report.windDirection.fold("")(Weather.compass)
+          else metric.classify(value).fold("")(_.label)
+        out.println(
+          String.format(
+            java.util.Locale.ROOT,
+            "%-16s %9s %-8s %s",
+            metric.label,
+            metric.format(value),
+            metric.unit,
+            status
+          )
+        )
+      }
+      val advice = Advice.ventilation(Some(indoor), Some(report))
+      out.println(s"Window: ${advice.headline} / ${advice.detail}")
+      Advice.headsUp(report).foreach(alert => out.println(s"Heads-up: ${alert.text}"))
+      report.warnings.foreach(err.println)
 
   def main(args: Array[String]): Unit = System.exit(run(args.toList, System.out, System.err))
 
@@ -109,42 +179,56 @@ object Main:
                   else if !options.recordHistory then HistoryStore.readOnly(diskHistory)
                   else diskHistory
                 if options.once then
+                  val resolved = resolveLocation(options)
+                  val place    = resolved.toOption.flatten
+                    .orElse(settings.outdoor)
+                    .orElse(Option.when(options.demo)(DemoOutdoor.Place))
                   try
-                    client.fetch(address.toOption.get) match
-                      case Left(error)     => err.println(error); 1
-                      case Right(snapshot) =>
-                        val at = System.currentTimeMillis()
-                        historyStore
-                          .append(Sample(at, address.toOption.get.toString, snapshot))
-                          .left
-                          .foreach(err.println)
-                        if options.json then
-                          out.println(
-                            ujson
-                              .Obj(
-                                "received_at_millis" -> ujson.Num(at.toDouble),
-                                "source"       -> (if options.demo then "demo" else address.toOption.get.toString),
-                                "aqi_derived"  -> snapshot.aqiDerived,
-                                "measurements" -> snapshot.json
-                              )
-                              .render(indent = 2)
-                          )
-                        else
-                          out.println(if options.demo then "AirGradient / DEMO (synthetic)"
-                          else s"AirGradient / ${address.toOption.get}")
-                          Metric.values.foreach { metric =>
+                    if resolved.isLeft then
+                      err.println(s"--location: ${resolved.left.toOption.get}")
+                      2
+                    else
+                      client.fetch(address.toOption.get) match
+                        case Left(error)     => err.println(error); 1
+                        case Right(snapshot) =>
+                          val at = System.currentTimeMillis()
+                          historyStore
+                            .append(Sample(at, address.toOption.get.toString, snapshot))
+                            .left
+                            .foreach(err.println)
+                          if options.json then
                             out.println(
-                              String.format(
-                                java.util.Locale.ROOT,
-                                "%-16s %9s %-8s %s",
-                                metric.label,
-                                metric.format(snapshot.value(metric)),
-                                metric.unit,
-                                metric.classify(snapshot.value(metric)).label
-                              )
+                              ujson
+                                .Obj(
+                                  "received_at_millis" -> ujson.Num(at.toDouble),
+                                  "source"       -> (if options.demo then "demo" else address.toOption.get.toString),
+                                  "aqi_derived"  -> snapshot.aqiDerived,
+                                  "measurements" -> snapshot.json
+                                )
+                                .tap(doc =>
+                                  place.foreach(p =>
+                                    doc("outdoor") = outdoorJson(outdoorReport(p, at, options.demo), snapshot)
+                                  )
+                                )
+                                .render(indent = 2)
                             )
-                          }
-                        0
+                          else
+                            out.println(if options.demo then "AirGradient / DEMO (synthetic)"
+                            else s"AirGradient / ${address.toOption.get}")
+                            Metric.values.foreach { metric =>
+                              out.println(
+                                String.format(
+                                  java.util.Locale.ROOT,
+                                  "%-16s %9s %-8s %s",
+                                  metric.label,
+                                  metric.format(snapshot.value(metric)),
+                                  metric.unit,
+                                  metric.classify(snapshot.value(metric)).label
+                                )
+                              )
+                            }
+                            place.foreach(p => printOutdoor(outdoorReport(p, at, options.demo), snapshot, out, err))
+                          0
                   finally client.close()
                 else
                   val now     = System.currentTimeMillis()

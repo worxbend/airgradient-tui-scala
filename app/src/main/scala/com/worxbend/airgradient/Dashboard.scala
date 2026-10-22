@@ -30,26 +30,27 @@ final class Dashboard(
   private val themeName               = Signal(
     if Palettes.names.contains(initial.settings.theme) then initial.settings.theme else "aurora"
   )
-  private val analytics                       = Computed(Telemetry.analyze(history.get, settings.get.refreshSeconds))
-  private val themeDropdown                   = DropdownState()
-  private val clock                           = Signal(now())
-  private val selectedMetric                  = Signal(1)
-  private val help                            = Signal(false)
-  private val message                         = Signal(initial.warnings.headOption.getOrElse(""))
-  private val urlInput                        = TextInputState(initial.settings.serverUrl)
-  private val refreshInput                    = TextInputState(initial.settings.refreshSeconds.toString)
-  private var loaded                          = initial
-  private var lifetime: Option[TaskScope]     = None
-  private var polling: Option[TaskScope]      = None
-  private var generation                      = 0
-  val outdoor: Signal[Option[OutdoorReport]]  = Signal(None)
-  val outdoorProblem: Signal[Option[String]]  = Signal(None)
-  private val outdoorFetching                 = Signal(false)
-  private val locationInput                   = TextInputState(initial.settings.outdoor.fold("")(_.name))
-  private var outdoorScope: Option[TaskScope] = None
-  private var outdoorGeneration               = 0
-  private var outdoorRequestedAt              = Long.MinValue
-  private var lastAdvice: Option[String]      = None
+  private val analytics                        = Computed(Telemetry.analyze(history.get, settings.get.refreshSeconds))
+  private val themeDropdown                    = DropdownState()
+  private val clock                            = Signal(now())
+  private val selectedMetric                   = Signal(1)
+  private val help                             = Signal(false)
+  private val message                          = Signal(initial.warnings.headOption.getOrElse(""))
+  private val urlInput                         = TextInputState(initial.settings.serverUrl)
+  private val refreshInput                     = TextInputState(initial.settings.refreshSeconds.toString)
+  private var loaded                           = initial
+  private var lifetime: Option[TaskScope]      = None
+  private var polling: Option[TaskScope]       = None
+  private var generation                       = 0
+  val outdoor: Signal[Option[OutdoorReport]]   = Signal(None)
+  val outdoorProblem: Signal[Option[String]]   = Signal(None)
+  private val outdoorFetching                  = Signal(false)
+  private val locationInput                    = TextInputState(initial.settings.outdoor.fold("")(_.name))
+  private var outdoorScope: Option[TaskScope]  = None
+  private var outdoorGeneration                = 0
+  private var outdoorRequestedAt               = Long.MinValue
+  private var lastAdvice: Option[String]       = None
+  private var lastHeadsUp: Option[Set[String]] = None
 
   override def theme: Theme         = Palettes(themeName.peek)
   override def config: RunnerConfig = RunnerConfig(tickRate = Some(250.millis))
@@ -71,7 +72,7 @@ final class Dashboard(
   override def bindings: KeyBindings = KeyBindings(
     binding("q", "quit")(quit()),
     binding("esc", "back")(if help.peek then help.set(false)
-    else if page.peek != Page.Overview then page.set(Page.Overview)
+    else if page.peek != Page.Overview then go(Page.Overview)
     else quit()),
     binding("r", "refresh")({ refresh(); refreshOutdoor(force = false) }),
     binding("h", "history")(page.set(if page.peek == Page.History then Page.Overview else Page.History)),
@@ -149,7 +150,10 @@ final class Dashboard(
         }
       case _ => ()
 
-  private def go(target: Page): Unit = if target == Page.Settings then openSettings() else page.set(target)
+  private def go(target: Page): Unit =
+    // Settings messages describe the form; they should not follow the user to other pages.
+    if page.peek == Page.Settings && target != Page.Settings then message.set("")
+    if target == Page.Settings then openSettings() else page.set(target)
   private def step(delta: Int): Unit =
     go(Page.values(math.floorMod(page.peek.ordinal + delta, Page.values.length)))
 
@@ -166,6 +170,7 @@ final class Dashboard(
     outdoor.set(None)
     outdoorProblem.set(None)
     outdoorRequestedAt = Long.MinValue
+    lastHeadsUp = None
     if outdoorPlace(settings.peek).nonEmpty then
       outdoorScope = Some(Async.scope())
       refreshOutdoor(force = true)
@@ -188,8 +193,17 @@ final class Dashboard(
                 outdoor.set(Some(report))
                 outdoorProblem.set(report.warnings.headOption)
                 checkAdvice()
+                checkHeadsUp(report)
         }
       case _ => ()
+
+  /** Notify only about events that are new since the previous report; the first report sets the baseline. */
+  private def checkHeadsUp(report: OutdoorReport): Unit =
+    val alerts = Advice.headsUp(report).map(_.text)
+    lastHeadsUp.foreach { seen =>
+      alerts.find(alert => !seen.contains(alert)).foreach(alert => notify(s"Heads-up: $alert", NoticeLevel.Warning))
+    }
+    lastHeadsUp = Some(alerts.toSet)
 
   private def checkAdvice(): Unit =
     val advice = Advice.ventilation(history.peek.lastOption.map(_.snapshot), outdoor.peek)
@@ -939,6 +953,7 @@ final class Dashboard(
               (rows.map(outdoorReading(_, report)) :+
                 text(advice.headline).bold.styled(_ => Palettes.bandStyle(advice.band)).length(1))*
             ).rounded.styled(_ => summon[Theme].surface).length(rows.size + 3),
+            pollenLine(report).length(1),
             attribution.length(1),
             spacer
           )
@@ -949,13 +964,72 @@ final class Dashboard(
           val air = panel("AIR OUTSIDE / modelled at street level")(
             OutdoorMetric.air.map(outdoorReading(_, report))*
           ).rounded.styled(_ => summon[Theme].surface)
-          column(
-            outdoorStatus(report).length(1),
-            row(weather.fill, air.fill).gap(1).length(11),
-            comparison(report).length(9),
-            attribution.length(1),
-            spacer
-          )
+          val pollen = panel("POLLEN / grains per m3, Europe only")(
+            OutdoorMetric.pollen.map(outdoorReading(_, report))*
+          ).rounded.styled(_ => summon[Theme].surface)
+          if size.width >= 150 then
+            column(
+              outdoorStatus(report).length(1),
+              row(weather.fill, air.fill, pollen.fill).gap(1).length(11),
+              comparison(report).length(9),
+              attribution.length(1),
+              spacer
+            )
+          else
+            column(
+              outdoorStatus(report).length(1),
+              row(weather.fill, air.fill).gap(1).length(11),
+              pollenLine(report).length(1),
+              comparison(report).length(9),
+              attribution.length(1),
+              spacer
+            )
+
+  /** The worst pollen band and the three highest counts. Missing pollen stays missing, never zero. */
+  private def pollenLine(report: OutdoorReport)(using Theme): Element =
+    val readings = OutdoorMetric.pollen.flatMap(metric => report.value(metric).map(metric -> _))
+    if readings.isEmpty then
+      text("Pollen: not forecast here (Open-Meteo covers Europe only)").styled(_ => summon[Theme].muted)
+    else
+      val worst = readings.map((metric, value) => metric.classify(Some(value)).get).maxBy(_.ordinal)
+      val top = readings.sortBy(-_._2).take(3).map((metric, value) => s"${metric.label} ${metric.format(Some(value))}")
+      row(
+        text("Pollen: ").styled(_ => summon[Theme].muted).length(8),
+        text(worst.label).bold.styled(_ => Palettes.bandStyle(worst)).length(worst.label.length + 3),
+        text(s"${top.mkString(" / ")} grains/m3").styled(_ => summon[Theme].muted).fill
+      )
+
+  private def headsUpLine(report: OutdoorReport)(using Theme): Element =
+    Advice.headsUp(report) match
+      case alerts if alerts.isEmpty =>
+        text("Heads-up: nothing notable in the next 12 hours.").styled(_ => summon[Theme].muted)
+      case alerts =>
+        val worst = alerts.maxBy(_.band.ordinal).band
+        row(
+          text("Heads-up: ").bold.styled(_ => Palettes.bandStyle(worst)).length(10),
+          text(alerts.map(_.text).mkString(" / ")).styled(_ => Palettes.bandStyle(worst)).fill
+        )
+
+  private def dailyTable(days: Vector[DailyOutlook])(using Theme): Element =
+    val rows = days.map(day =>
+      Seq(
+        day.label,
+        s"${day.low.fold("--")(fixed(_, 1))} / ${day.high.fold("--")(fixed(_, 1))}",
+        day.rainChance.fold("--")(p => s"${fixed(p, 0)}%"),
+        day.uvMax.fold("--")(fixed(_, 1)),
+        day.sun
+      )
+    )
+    panel("NEXT DAYS / low, high, rain, UV, sun")(
+      table(
+        rows,
+        Constraint.Length(7),
+        Constraint.Length(12),
+        Constraint.Length(5),
+        Constraint.Length(4),
+        Constraint.Fill(1)
+      ).header("Day", "Low/high C", "Rain", "UV", "Sun").length(rows.size + 1)
+    ).rounded.styled(_ => summon[Theme].surface)
 
   private def forecastChart(
       hours: Vector[ForecastHour],
@@ -1038,22 +1112,31 @@ final class Dashboard(
           forecastChart(hours, hours.map(_.usAqi), 0, Palettes.seriesStyle(Metric.Pm25), true).fill
         ).rounded
         if size.width >= 110 then
+          val days = Option.when(report.daily.nonEmpty)(dailyTable(report.daily).length(report.daily.size + 3))
           column(
             outdoorStatus(report).length(1),
             best.length(1),
+            headsUpLine(report).length(1),
             row(
               column(temperature.fill, aqi.fill).fill(3),
-              column(forecastTable(hours, 8).length(11), rainLine.length(1), spacer).fill(2)
+              column((Vector(forecastTable(hours, 8).length(11)) ++ days ++ Vector(rainLine.length(1), spacer))*)
+                .fill(2)
             ).gap(1).fill,
             attribution.length(1)
           )
         else
           val rows = if size.height < 24 then 3 else 6
+          val days =
+            Option.when(report.daily.nonEmpty && size.height >= 30)(
+              dailyTable(report.daily).length(report.daily.size + 3)
+            )
           column(
-            best.length(1),
-            temperature.fill,
-            forecastTable(hours, rows).length(rows + 3),
-            rainLine.length(1)
+            (Vector(
+              best.length(1),
+              headsUpLine(report).length(1),
+              temperature.fill,
+              forecastTable(hours, rows).length(rows + 3)
+            ) ++ days :+ rainLine.length(1))*
           )
 
   private def summaryPage(size: Size)(using ReactiveScope, Theme): Element =

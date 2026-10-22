@@ -84,6 +84,9 @@ Add outdoor weather, air quality, and a 24-hour forecast for your area:
 
 Outdoor data comes from [Open-Meteo](https://open-meteo.com/): free, no account, no key.
 Only the location's coordinates are sent, and only when you set a location.
+With a location set, `--once` adds an outdoor section and `--json` adds an `outdoor` object
+(current values or `null`, window advice, heads-up, warnings). An outdoor failure is reported
+but does not change the exit code.
 
 For scripts and non-interactive sessions:
 
@@ -104,7 +107,8 @@ The dashboard needs an interactive terminal; `--once` and `--json` work in pipel
 | :---: | --- |
 | 📡 | **Live readings** — AQI, CO₂, particulate measurements, TVOC/NOx indices, temperature, humidity. |
 | 📈 | **History with context** — Braille time-series charts, labeled axes, sample means and peaks, and honest gaps. |
-| 🌦️ | **Outside, too** — current weather, outdoor US/EU AQI and pollutants, and a 24-hour forecast from Open-Meteo. |
+| 🌦️ | **Outside, too** — current weather, outdoor US/EU AQI, pollutants, pollen (Europe), a 24-hour forecast, and three days ahead. |
+| ⚠️ | **Heads-up** — unhealthy air, heavy rain chances, frost, or a high UV peak in the next 12 hours, with a quiet notification for new events. |
 | 🪟 | **Window advice** — compares indoor CO2 and PM2.5 with outdoor air, and picks the best hour to air out. |
 | 🌡️ | **Comfort** — dew point, water vapour, heat index, mold and condensation risk, and the CO2 trend per hour. |
 | 📋 | **Summary** — every reading at once with min, mean, peak, change, and time spent in the Good band. |

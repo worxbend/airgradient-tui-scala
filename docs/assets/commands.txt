@@ -27,4 +27,4 @@ DEMO / updated 0s ago / every 30s / 61 samples                                 o
 │     0 min                                                                                                      30 min│
 │mean 804 / peak 960 / 61 reported                                                                                     │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-Demo settings are session-only; no configuration or history is written.
+r refresh   h history   c settings   1-7 pages   t theme   ^p commands   ? help   q quit                    aurora
