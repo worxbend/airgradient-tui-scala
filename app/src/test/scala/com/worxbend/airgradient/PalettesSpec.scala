@@ -102,7 +102,11 @@ final class PalettesSpec extends AnyFunSuite:
           assert(cells.exists(_._3.style.bg == Palettes(name).primary.bg), s"$name / $context: missing base color")
       Palettes.names.foreach { name =>
         checkBackground(name, "overview")
-        pilot.press("h").waitForIdle()
+        Vector("3" -> "summary", "4" -> "comfort", "5" -> "outdoor", "6" -> "forecast").foreach { (key, page) =>
+          pilot.press(key).waitForIdle()
+          checkBackground(name, page)
+        }
+        pilot.press("1").press("h").waitForIdle()
         checkBackground(name, "history")
         pilot.press("esc").press("?").waitForIdle()
         checkBackground(name, "help")

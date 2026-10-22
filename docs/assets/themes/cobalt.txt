@@ -1,6 +1,6 @@
  AIRGRADIENT   air quality / local observatory                               offline demo             [DEMO / synthetic]
-[ › Overview ]   [ History ]   [ Settings ]
-DEMO / updated 0s ago / every 30s / 61 samples
+[ › Overview ]  [ History ]   [ Summary ]   [ Comfort ]   [ Outdoor ]   [ Forecast ]   [ Settings ]
+DEMO / updated 0s ago / every 30s / 61 samples                                 outside 9.4 C / US AQI 38 / Partly cloudy
 ╭AIR QUALITY / current AQI─────────────────────╮ ╭ROOM SIGNAL / available readings─────────────────────────────────────╮
 │24 US AQI                               [Good]│ │Moderate            10 / 10 available                                │
 │            current AQI / 0 to 500            │ │All readings available / local API / no cloud account.               │
@@ -27,4 +27,4 @@ DEMO / updated 0s ago / every 30s / 61 samples
 │     0 min                                                                                                      30 min│
 │mean 804 / peak 960 / 61 reported                                                                                     │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
-r refresh   h history   c settings   t theme   ^p commands   ? help   q quit                                cobalt
+r refresh   h history   c settings   1-7 pages   t theme   ^p commands   ? help   q quit                    cobalt

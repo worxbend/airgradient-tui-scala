@@ -1,5 +1,5 @@
  AIRGRADIENT   air quality                [DEMO / synthetic]
-[ › Overview ]   [ History ]   [ Settings ]
+[ ‹ ] › Overview  1/7                         1-7 jump [ › ]
 DEMO / updated 0s ago / every 30s / 61 samples
 ╭AIR QUALITY / current AQI─────────────────────────────────╮
 │24 US AQI                                           [Good]│

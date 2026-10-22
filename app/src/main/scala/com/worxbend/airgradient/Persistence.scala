@@ -14,7 +14,12 @@ object LocalPaths:
   def config: Path  = root("XDG_CONFIG_HOME", ".config").resolve("airgradient-desktop/config.json")
   def history: Path = root("XDG_DATA_HOME", ".local/share").resolve("airgradient-tui-scala/history.jsonl")
 
-final case class Settings(serverUrl: String = "", refreshSeconds: Int = 30, theme: String = "aurora")
+final case class Settings(
+    serverUrl: String = "",
+    refreshSeconds: Int = 30,
+    theme: String = "aurora",
+    outdoor: Option[Location] = None
+)
 final case class LoadedSettings(settings: Settings, fingerprint: String, warnings: Vector[String])
 
 private[airgradient] object AtomicFile:
@@ -44,12 +49,20 @@ final class ConfigStore(val path: Path):
             case ujson.Num(n) if n.isWhole && n >= 5 && n <= 3600 => n.toInt
           }
           val theme    = obj.value.get("theme").collect { case ujson.Str(s) => s }.getOrElse("aurora")
-          val warnings = Option
-            .when(obj.value.contains("refresh_interval_secs") && interval.isEmpty)(
+          val outdoor  = obj.value.get(ConfigStore.OutdoorKey).filterNot(_ == ujson.Null).map(ConfigStore.location)
+          val warnings = Vector(
+            Option.when(obj.value.contains("refresh_interval_secs") && interval.isEmpty)(
               "invalid refresh interval; using 30s"
+            ),
+            outdoor.flatMap(_.left.toOption).map(error => s"invalid outdoor location ($error); outdoor data is off")
+          ).flatten
+          Right(
+            LoadedSettings(
+              Settings(url, interval.getOrElse(30), theme, outdoor.flatMap(_.toOption)),
+              fingerprint(raw),
+              warnings
             )
-            .toVector
-          Right(LoadedSettings(Settings(url, interval.getOrElse(30), theme), fingerprint(raw), warnings))
+          )
         case _ => Left("config must contain a JSON object; repair it before saving")
     catch case NonFatal(_) => Left(s"cannot read config at $path; repair it or use --config with another file")
 
@@ -67,6 +80,14 @@ final class ConfigStore(val path: Path):
             else ujson.Str(DeviceAddress.parse(settings.serverUrl).toOption.get.toString)
             root("refresh_interval_secs") = ujson.Num(settings.refreshSeconds)
             root("theme") = ujson.Str(settings.theme)
+            settings.outdoor match
+              case Some(place) =>
+                root(ConfigStore.OutdoorKey) = ujson.Obj(
+                  "name"      -> place.name,
+                  "latitude"  -> place.latitude,
+                  "longitude" -> place.longitude
+                )
+              case None => val _ = root.remove(ConfigStore.OutdoorKey)
             val json = ujson.Obj.from(root).render(indent = 2) + "\n"
             AtomicFile.replace(
               path,
@@ -82,8 +103,26 @@ final class ConfigStore(val path: Path):
   def validate(settings: Settings): Either[String, Unit] =
     if settings.refreshSeconds < 5 || settings.refreshSeconds > 3600 then Left("refresh must be 5–3600 seconds")
     else if !Palettes.names.contains(settings.theme) then Left(s"theme must be ${Palettes.names.mkString(", ")}")
+    else if settings.outdoor.exists(Location.validate(_).isLeft) then
+      Left(Location.validate(settings.outdoor.get).left.toOption.get)
     else if settings.serverUrl.isBlank then Right(())
     else DeviceAddress.parse(settings.serverUrl).map(_ => ())
+
+object ConfigStore:
+  /** Owned by this app only; other AirGradient clients ignore it, and its absence means outdoor data is off. */
+  val OutdoorKey = "tui_outdoor_location"
+
+  def location(node: ujson.Value): Either[String, Location] = node match
+    case obj: ujson.Obj =>
+      val fields = obj.value
+      (
+        fields.get("name").collect { case ujson.Str(s) => s },
+        fields.get("latitude").collect { case ujson.Num(n) => n },
+        fields.get("longitude").collect { case ujson.Num(n) => n }
+      ) match
+        case (Some(name), Some(lat), Some(lon)) => Location.validate(Location(name, lat, lon))
+        case _                                  => Left("needs name, latitude, and longitude")
+    case _ => Left("must be an object")
 
 trait HistoryStore:
   def load(source: String): Either[String, Vector[Sample]]

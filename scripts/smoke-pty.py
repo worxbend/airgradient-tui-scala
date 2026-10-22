@@ -115,6 +115,11 @@ try:
     expect(b"HISTORY / PM2.5")
     os.write(master, b"\x1b")
     time.sleep(0.15)
+    for key, token in ((b"3", b"SUMMARY /"), (b"4", b"THERMAL COMFORT"), (b"o", b"INDOOR VS OUTDOOR"),
+                       (b"f", b"Best time to air out"), (b"1", b"ROOM SIGNAL")):
+        os.write(master, key)
+        expect(token)
+        check_background("paper")
     for width, height, token in ((48, 18, b"Particles >0.3"), (160, 44, b"REPORTING / recent samples")):
         screen.resize(lines=height, columns=width)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", height, width, 0, 0))
@@ -125,7 +130,7 @@ try:
     assert process.wait(timeout=10) == 0
     after = termios.tcgetattr(slave)
     assert before == after, "Application did not restore the original terminal settings"
-    print(f"Real PTY: dashboard, history, settings, all {len(themes)} themes and backgrounds, command search, resize, clean quit, terminal restoration passed")
+    print(f"Real PTY: dashboard, history, summary, comfort, outdoor, forecast, settings, all {len(themes)} themes and backgrounds, command search, resize, clean quit, terminal restoration passed")
 finally:
     if process.poll() is None:
         os.killpg(process.pid, signal.SIGKILL)

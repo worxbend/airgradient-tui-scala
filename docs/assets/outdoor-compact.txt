@@ -1,0 +1,24 @@
+ AIRGRADIENT   air quality                [DEMO / synthetic]
+[ ‹ ] › Outdoor  5/7                          1-7 jump [ › ]
+DEMO / updated 0s ago / every 30s / 61 samples
+Demo City (synthetic) / model time 08:00 / updated 0s ago
+╭OUTDOOR / Partly cloudy───────────────────────────────────╮
+│Temperature   9.4 C                                       │
+│Humidity      72 %                                        │
+│Wind          14.2 km/h SW                                │
+│US AQI        38 US AQI       Good                        │
+│PM2.5         6.1 ug/m3       Good                        │
+│UV index      1.2             Good                        │
+│Feels like    7.8 C                                       │
+│Pressure      1014 hPa                                    │
+│EU AQI        27 EAQI         Moderate                    │
+│No action needed                                          │
+╰──────────────────────────────────────────────────────────╯
+Pollen: Moderate   Grass 14 / Birch 3 / Mugwort 1 grains/m3
+Synthetic outdoor data / offline demo / no network requests
+
+
+
+
+
+r refresh  h history  c settings  ? help  q quit
